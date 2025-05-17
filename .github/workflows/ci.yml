@@ -1,0 +1,37 @@
+name: Ferra CI
+
+on:
+  push:
+    branches: [ "main" ] # Or your primary branch
+  pull_request:
+    branches: [ "main" ] # Or your primary branch
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets -- -D warnings # Treat all warnings as errors
+
+      - name: Run tests
+        run: cargo test --all-targets --verbose
+
+      # Add cargo audit step once dependencies are added
+      # - name: Security audit
+      #   run: |
+      #     cargo install cargo-audit
+      #     cargo audit 

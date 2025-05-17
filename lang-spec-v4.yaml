@@ -1,0 +1,46 @@
+#---- lang-spec-v4.yaml ----
+date: 2025-05-17
+front_end:
+  lexer: ragel_dfa
+  parser: pratt_glr
+  type_inference: bidirectional_hm
+  diagnostics_latency_ms: 50
+mid_ir:
+  form: ssa
+  tags: cbor_notes
+back_ends:
+  - x86_64
+  - arm64
+  - wasm_wasi
+  - apple_bitcode
+  - android_aab
+  - elf_embedded
+  - oci_serverless
+supply_chain:
+  sbom: spdx
+  signing: sigstore
+ai_api:
+  endpoints: [ast, refactor, verify]
+  coverage_gate: 0.80
+stdlib:
+  domains: [io, net, dataframe, crypto, ui, mlops]
+  pkg_mgr: cid_semver_signed
+ffi: [c, c++, rust, jvm, dotnet, python]
+concurrency:
+  model: deterministic_actors
+  cpu_gpu_partition: compile_time
+security:
+  capability_permissions: true
+  energy_budget_j: 70
+developer_exp:
+  hot_reload_ms: 50
+  cli_scaffold: true
+teaching:
+  tiers: [day0, week1, month1]
+governance:
+  vote_cap_percent: 15
+  license: apache-2.0-plus-llvm
+benchmarks:
+  spec_ratio: 0.8
+  onboarding_hours: 2
+#--------------------------- 

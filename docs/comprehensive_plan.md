@@ -19,12 +19,12 @@ This document outlines the comprehensive, phased, and modular plan for designing
         *   *Documentation*: `CODING_STANDARDS.md` for the compiler/tooling codebase.
 
 *   **Module 0.2: Formalize Core Syntax & Semantics (Initial Draft)**
-    *   **Step 0.2.1**: Draft initial grammar rules (BNF/EBNF) based on `Steps.md` (Pratt for expressions, GLR fallback for optional significant-indent) and Brief v4 syntax examples.
-        *   *Documentation*: `SYNTAX_GRAMMAR_V0.1.md`.
-    *   **Step 0.2.2**: Define core data types, mutability (`let` vs `var`), basic control flow, function definitions.
-        *   *Documentation*: `CORE_SEMANTICS_V0.1.md`.
+    *   **Step 0.2.1**: Draft initial grammar rules (BNF/EBNF) based on `Steps.md` (Pratt for expressions, GLR fallback for optional significant-indent) and Brief v4 syntax examples. (*Status: Initial draft substantially complete*)
+        *   *Documentation*: `docs/SYNTAX_GRAMMAR_V0.1.md`.
+    *   **Step 0.2.2**: Define core data types, mutability (`let` vs `var`), basic control flow, function definitions. (*Status: Initial draft substantially complete*)
+        *   *Documentation*: `docs/CORE_SEMANTICS_V0.1.md`.
     *   **Step 0.2.3**: Outline initial principles for the ownership/borrowing model, emphasizing "positive-first" error messaging.
-        *   *Documentation*: `OWNERSHIP_MODEL_PRINCIPLES_V0.1.md`.
+        *   *Documentation*: `docs/OWNERSHIP_MODEL_PRINCIPLES_V0.1.md`.
 
 *   **Module 0.3: Publish Initial Specification & RFCs**
     *   **Step 0.3.1**: Formally publish the `lang-spec-v4.yaml` header (from `Steps.md`) as the canonical machine-readable specification in the project root.
