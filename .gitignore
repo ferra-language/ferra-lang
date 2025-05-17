@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# IDE & Editor specific
+.vscode/
+.idea/
+
+# Build & Dependency artifacts (examples, can be expanded)
+/build/
+/dist/
+node_modules/
+*.pyc
+__pycache__/
+.env 
