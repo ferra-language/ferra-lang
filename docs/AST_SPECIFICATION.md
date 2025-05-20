@@ -14,6 +14,7 @@
 * **Immutable** – AST is read‐only after construction; later passes build separate mutable IRs.
 * **Evolvable** – Additive; v0.1 avoids breaking fields so future RFCs can extend using `Option<>` or new variants. While v0.x versions may introduce breaking changes to the AST structure as the language evolves, v1.x and later will adhere to semantic versioning for the AST, ensuring stability for tooling that consumes it.
 * **Assignment as Expression (v0.1)**: For v0.1, assignment operations (`=`, `+=`, etc.) are parsed as expressions (see `ExprKind::Assign`) and can syntactically appear where other expressions are allowed. Their evaluation semantics (e.g., what value they yield, typically `Unit`) are defined in `CORE_SEMANTICS.md`.
+* **Identifier Representation**: The AST uses `IdentId` to represent identifier occurrences (names of variables, functions, types, fields, etc.). The AST captures the syntactic structure of where these identifiers are declared and used. Full scope resolution (linking identifier uses to their declarations, managing lexical scopes, and handling shadowing) is a responsibility of subsequent semantic analysis phases, which will typically build and use symbol tables or similar data structures by traversing this AST.
 
 ---
 
@@ -29,7 +30,9 @@ pub struct IdentId(u32);             // points into IdentArena (string interner)
 pub struct ExprId(u32);
 pub struct StmtId(u32);
 pub struct TypeId(u32);
-pub struct ItemId(u32);              // top‐level items (functions, data classes)
+pub struct ItemId(u32);              // top‐level items (functions, data classes, extern blocks)
+pub struct ExternalItemId(u32);      // New: ID for items within an ExternBlock
+pub struct AttributeId(u32);         // New: ID for parsed attributes
 pub struct BlockId(u32);
 pub struct PatternId(u32);
 pub struct PathId(u32); // For simple paths; complex paths might be full nodes
@@ -44,7 +47,7 @@ pub enum LiteralValue {
     Bool(bool),
     String(IdentId),  // interned string contents
     Unit,             // ()
-    // Char(char), // ⚠️ TBD (AST-LIT) if dedicated char literals like 'x' are supported
+    Char(char),       // Unicode character literal
 }
 // Note: When an `ExprKind::Literal` node containing `LiteralValue::Int`, `::Float`, `::Bool`,
 // or `::Unit` is evaluated or bound, it exhibits copy semantics as per CORE_SEMANTICS.md.
@@ -63,7 +66,8 @@ pub struct Expr { // Stored in ExprArena, referenced by ExprId
 
 pub enum ExprKind {
     Literal { value: LiteralValue },
-    Identifier { ident: IdentId }, // Variable use, function name in call position
+    Identifier { ident: IdentId }, // Variable use, simple function name in call position
+    Path { path: PathId },         // For qualified paths like my_mod::my_func used as expressions (e.g., callee)
     Unary { op: UnaryOp, operand: ExprId },
     Binary { op: BinaryOp, lhs: ExprId, rhs: ExprId },
     Assign { op: AssignOp, lhs: ExprId, rhs: ExprId }, // Assignment expressions
@@ -149,7 +153,17 @@ pub enum StmtKind {
     Continue,
     While { cond_expr: ExprId, body_block: BlockId },
     For   { loop_var_ident: IdentId, iter_expr: ExprId, body_block: BlockId },
+    If    { cond_expr: ExprId, then_block: BlockId, else_branch: Option<ElseBranch> }, // For if statements
     // Block { block: BlockId }, // A standalone block statement can be represented by BlockId directly if needed
+}
+```
+
+### 4.1  Helper enum for If Stmt else branches
+
+```rust
+pub enum ElseBranch {
+    Else(BlockId),
+    ElseIf(StmtId), // Points to another Stmt wrapping an If an StmtKind::If
 }
 ```
 
@@ -167,7 +181,7 @@ pub struct Block { // Stored in BlockArena, referenced by BlockId
 pub struct Item { // Stored in ItemArena, referenced by ItemId
     pub kind: ItemKind,
     pub span: Span,
-    // pub attributes: Vec<AttributeId>, // Future
+    pub attributes: Vec<AttributeId>, // Activated: Attributes applying to this item
     // pub visibility: Visibility, // Future
 }
 
@@ -175,6 +189,7 @@ pub enum ItemKind {
     Function { sig: FnSig, body: BlockId },
     DataClass { name: IdentId, fields: Vec<DataField> /*, generic_params: Vec<GenericParamId>*/ },
     // Import { path: PathId, alias: Option<IdentId> }, // Future
+    ExternBlock { abi_string_id: IdentId, items: Vec<ExternalItemId> }, // New for FFI
 }
 
 pub struct FnSig {
@@ -182,13 +197,46 @@ pub struct FnSig {
     pub params: Vec<Param>,
     pub ret_ty_annotation: Option<TypeId>,
     pub is_async: bool,
+    pub linkage_abi: Option<IdentId>, // New: For `extern "C" fn`, stores interned ABI string (e.g., "C")
     // pub generic_params: Vec<GenericParamId>, // Future
     pub span: Span,
 }
 
-pub struct Param { pub ident: IdentId, pub ty_annotation: TypeId, pub span: Span }
+pub struct Param { pub attributes: Vec<AttributeId>, pub ident: IdentId, pub ty_annotation: TypeId, pub span: Span }
 
-pub struct DataField { pub ident: IdentId, pub ty_annotation: TypeId, pub span: Span }
+pub struct DataField { pub attributes: Vec<AttributeId>, pub ident: IdentId, pub ty_annotation: TypeId, pub span: Span }
+```
+
+### 5.1 External Item Nodes (New Subsection for FFI)
+
+```rust
+// These nodes represent items declared within an `extern "C" { ... }` block.
+
+pub struct ExternalItem { // Stored in ExternalItemArena, referenced by ExternalItemId
+    pub kind: ExternalItemKind,
+    pub span: Span,
+    pub attributes: Vec<AttributeId>, // e.g., for #[link_name = "..."]
+}
+
+pub enum ExternalItemKind {
+    Function(ExternFnDecl), // Declaration of an external C function
+    Variable(ExternVarDecl), // Declaration of an external C static variable
+}
+
+pub struct ExternFnDecl { // Represents `fn foo(...) -> RetType;` inside extern block
+    pub name: IdentId,
+    pub params: Vec<Param>, // Re-uses the Param struct defined for Ferra functions
+    pub ret_ty_annotation: Option<TypeId>,
+    pub is_async: bool, // Likely always false for C FFI, but mirrors FnSig structure
+    // Linkage name (symbol name) is handled by attributes on the parent ExternalItem.
+}
+
+pub struct ExternVarDecl { // Represents `static BAR: i32;` inside extern block
+    pub name: IdentId,
+    pub ty_annotation: TypeId,
+    // External C variables are typically treated as constants from Ferra's perspective
+    // or their mutability is managed by C. For AST, just type is primary.
+}
 ```
 
 ---
@@ -234,8 +282,10 @@ pub enum TypeKind {
     Generic { base_path: PathId, args: Vec<TypeId> },
     Tuple { elems: Vec<TypeId> },
     Array { elem_ty: TypeId }, // For `[T]`
-    Function { param_types: Vec<TypeId>, ret_ty: Box<TypeId> }, // Box for recursion
+    Function { param_types: Vec<TypeId>, ret_ty: Box<TypeId> }, // Ferra native function type
     Infer, // Represents `_` in type position
+    RawPointer { is_const: bool, pointee_type: TypeId }, // New for FFI (e.g., *const i32, *mut MyData)
+    ExternFunction { abi_string_id: IdentId, param_types: Vec<TypeId>, ret_ty: Box<TypeId> }, // New for FFI (e.g., extern "C" fn(i32) -> i32)
 }
 ```
 
@@ -287,7 +337,7 @@ pub enum TypeKind {
 | **AST-MACRO-DEF**   | AST for Macro definitions.                                                       |
 | **AST-MACRO-INVOKE**| How to represent macro invocations (e.g., `json!(...)`) before expansion.        |
 | **AST-MACRO-SPAN**  | Span handling for macro-generated code.                                          |
-| **AST-ATTR**        | Representation of attributes/annotations (e.g., `#[gpu]`).                       |
+| **AST-ATTR**        | Representation of attributes/annotations (e.g., `#[gpu]`). Details for `AttributeNode` (see below). |
 | **AST-PAT-ADV**     | AST for more advanced patterns (ranges, `|` or-patterns, `@` binding).             |
 | **AST-PAT-MUT**     | Support for `ref mut name` or similar in patterns.                             |
 | **AST-PAT-REST**    | Clarify `has_rest: bool` vs. a full `RestPatternNode` in `DataDestruct`.         |
@@ -299,5 +349,32 @@ pub enum TypeKind {
 | **AST-NULLABLE-TYPE**| AST for `Type?` syntax if specific nullable types (not `Option<T>`) are added.   |
 
 ---
+
+### Appendix: Attribute Node Representation (Related to AST-ATTR)
+
+```rust
+// Conceptual representation for parsed attributes, stored in an AttributeArena
+// referenced by AttributeId.
+pub struct AttributeNode {
+    pub path: PathId,                 // Identifier path of the attribute (e.g., `repr`, `link_name`, `ffi.abi`, `gpu`)
+    pub arguments: Vec<AttributeArgumentKind>, // Parsed arguments to the attribute (e.g., for `#[gpu(target_env="vulkan")]`)
+    pub span: Span,
+}
+
+pub enum AttributeArgumentKind {
+    Literal(LiteralValue),
+    Identifier(IdentId),
+    Nested(Vec<AttributeNode>), // For nested attributes like #[repr(C, align(8))]
+                                // or #[derive(Debug, Clone)] where Debug, Clone are like sub-attributes.
+}
+```
+
+// Note on Data-Parallel `for_each` AST:
+// As data-parallel iteration is primarily exposed via method calls on parallel iterators
+// (e.g., `my_vector.par_iter().for_each(|item| {...})` as per `DATA_PARALLEL_GPU.md` Section 2.2),
+// these constructs will be represented in the AST using existing nodes such as `ExprKind::MethodCall`.
+// No new, dedicated AST node (e.g., `ParForEachStmt`) is introduced for this v0.1 design.
+// The `#[gpu]` attribute, if applied to a function containing such a loop, would be an `AttributeNode`
+// associated with the `ItemKind::Function`.
 
 > *Next*: Parser implementation will emit these IDs; semantic analysis and subsequent compiler passes will traverse the AST using these IDs to access nodes stored in arenas. Visitors or iterative processing queues will be common traversal mechanisms.

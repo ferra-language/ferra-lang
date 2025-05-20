@@ -16,12 +16,13 @@ This design is based on the token definitions in `docs/rfc/RFC-001_SYNTAX_GRAMMA
 
 The lexer **MUST** recognize and produce tokens corresponding to all terminal symbols defined in `docs/rfc/RFC-001_SYNTAX_GRAMMAR.md`, Section 1.3 ("Tokens"). This includes:
 
-*   **Keywords**: `let`, `var`, `fn`, `async`, `data`, `match`, `true`, `false`, `and`, `or`, etc.
+*   **Keywords**: `let`, `var`, `fn`, `async`, `data`, `match`, `true`, `false`, `and`, `or`. (This list will expand as more keywords are formally added to the grammar from `SYNTAX_GRAMMAR_V0.1.md` or subsequent versions).
 *   **Identifiers**: `IDENTIFIER` (Unicode ID_Start/ID_Continue based).
 *   **Literals**:
     *   `IntegerLiteral` (Decimal, Hex, Octal, Binary, with `_` separators).
     *   `FloatLiteral` (Decimal, with `_` separators, optional exponent).
     *   `StringLiteral` (Standard strings with escape sequences including `\u{...}`).
+    *   `CharacterLiteral` (Single character with escape sequences including `\u{...}`).
     *   `BooleanLiteral` (Handled by `true`/`false` keywords).
 *   **Punctuation & Operators**: `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `&&`, `||`, `&`, `|`, `^`, `<<`, `>>`, `??` (COALESCE), `=`, `+=`, `-=`, `*=` `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`, `!` (LOGICAL_NOT/MACRO_BANG), `?` (ERR_PROP_POSTFIX / future TERNARY_Q), `.` (DOT), `,`, `:`, `;`, `(`, `)`, `{`, `}`, `[`, `]`, `->` (ARROW), `=>` (FAT_ARROW), `..`, `..=`, `::` (PATH_SEP), `_`.
 *   **Special Tokens**:
@@ -47,7 +48,7 @@ Each token should carry its type, its textual representation (lexeme), and its s
     *   `BlockComment` (`/* ... */`, supporting nesting): The lexer consumes and discards block comments.
 *   **Newlines**: Physical newline characters (LF, CRLF normalized to LF) are significant.
     *   The lexer **MUST** emit a `NEWLINE` token for each logical line break that isn't part of a multi-line token (like a future multi-line string). This `NEWLINE` token is used by the parser for statement termination decisions and by the indentation logic.
-    *   The lexer itself does not decide if a `NEWLINE` terminates a statement; that is parser logic based on preceding tokens (see `RFC-001_SYNTAX_GRAMMAR.md`, §1.1).
+    *   The lexer itself does not decide if a `NEWLINE` terminates a statement; that is parser logic based on preceding tokens (see `docs/SYNTAX_GRAMMAR_V0.1.md`, §1.1).
 
 ## 5. Significant Indentation Handling
 
@@ -55,26 +56,30 @@ This is a critical feature for Ferra, allowing Python-like block structures. The
 
 *   **Indentation Stack**: The lexer maintains a stack of current indentation levels (e.g., a stack of column numbers, typically representing counts of spaces or equivalent tab widths).
     *   The stack is initialized with a 0 level (for the start of the file).
+*   **Calculating Indentation**: 
+    *   Tabs (`\t`) in the leading indentation of a line are expanded to 4 spaces each for the purpose of calculating the indentation width.
+    *   Mixing tabs and spaces within the same leading indentation sequence of a single line (e.g., `space space tab space`) is a lexical error.
+    *   The indentation of a line is the total width in spaces after tab expansion.
 *   **Processing Lines**: At the beginning of each new non-empty, non-comment-only logical line:
-    1.  Calculate the current line's indentation (number of leading spaces, tabs converted to spaces according to a fixed rule. ⚠️ **TBD (LEX-1)**: Define tab stop policy, e.g., 1 tab = 4 spaces, and error handling for mixed tabs/spaces for indentation. See Open Question LEX-1).
+    1.  Calculate the current line's indentation width as described above.
     2.  Compare this indentation with the top of the indentation stack:
         *   **Greater Indentation**: If current indent > stack top: Push current indent onto the stack and emit an `INDENT` token.
         *   **Lesser Indentation**: If current indent < stack top: Pop levels from the stack until stack top <= current indent. For each level popped where stack top was > current indent, emit a `DEDENT` token. If, after popping, stack top != current indent, it's an indentation error (a "dedent to an unexpected level").
         *   **Equal Indentation**: No `INDENT` or `DEDENT` tokens are emitted. The line simply continues at the current indentation level.
 *   **End Of File (EOF)**: Before emitting the `EOF` token, if the indentation stack contains levels greater than the initial 0, emit corresponding `DEDENT` tokens to close all open indented blocks.
 *   **Empty/Comment Lines**: Lines that are empty or contain only whitespace and/or comments do not affect the indentation level and do not cause `INDENT`/`DEDENT` tokens to be emitted.
-*   **Hygiene**: The grammar (`RFC-001`, §1.1, "Style Hygiene") specifies that a single block must choose one style (braces or indent). The lexer produces `INDENT`/`DEDENT` tokens regardless; the parser will enforce this hygiene rule.
+*   **Hygiene**: The grammar (`docs/rfc/RFC-001_SYNTAX_GRAMMAR.md`, §1.1, "Style Hygiene") specifies that a single block must choose one style (braces or indent). The lexer produces `INDENT`/`DEDENT` tokens regardless; the parser will enforce this hygiene rule.
 
 ## 6. Identifier and Keyword Recognition
 
-*   **Identifiers**: Recognized according to the `IDENTIFIER ::= ID_START (ID_CONTINUE)*` rule from `RFC-001_SYNTAX_GRAMMAR.md`.
+*   **Identifiers**: Recognized according to the `IDENTIFIER ::= ID_START (ID_CONTINUE)*` rule from `docs/rfc/RFC-001_SYNTAX_GRAMMAR.md`.
     *   The lexer **MUST** correctly implement Unicode ID_Start and ID_Continue properties as per Unicode Standard Annex #31.
     *   The lexer normalises identifier lexemes to NFC (Normalization Form C) but does not perform case-folding.
     *   The lexeme (actual text) is stored with the `IDENTIFIER` token.
 *   **Keywords**: After an identifier-like sequence is lexed, it is checked against a list of reserved keywords.
     *   If it matches a keyword, the corresponding keyword token is emitted (e.g., `Token::KeywordLet`).
     *   Otherwise, an `IDENTIFIER` token is emitted.
-*   **Lexer Aliases**: The keywords `and` and `or` are lexed as distinct keyword tokens initially (e.g., `Token::KeywordAnd`, `Token::KeywordOr`) or the lexer can directly emit the tokens for `&&` and `||` respectively. The parser will then treat them as equivalent to `&&` and `||`. (⚠️ **TBD (LEX-2)**: Finalize if alias processing is lexer-side token rewrite or parser-side alternative handling for these keywords).
+*   **Lexer Aliases for `and`/`or`**: The keywords `and` and `or` are recognized by the lexer. Upon recognition, the lexer will emit the token corresponding to `&&` for `and`, and the token corresponding to `||` for `or`. This simplifies the parser, which will only need to handle `&&` and `||` tokens for logical operations.
 
 ## 7. Literal Value Parsing
 
@@ -95,11 +100,21 @@ For literals, the lexer must recognize the syntax and also typically convert the
     *   Ignore underscores `_`.
     *   The token should store the numeric value (e.g., as `f64`).
     *   Handle invalid formats.
+*   **Character Literals (`CharacterLiteral`)**:
+    *   Recognize `'...'` syntax, as defined in `docs/SYNTAX_GRAMMAR_V0.1.md`.
+    *   A character literal must contain exactly one character after processing escapes.
+    *   Supported escape sequences: `\'`, `\\`, `\n`, `\r`, `\t`, `\0`, and Unicode escapes `\u{...}` (e.g., `\u{7E}`).
+    *   The token should store the processed Unicode scalar value (e.g., as a Rust `char` type).
+    *   Error Conditions:
+        *   Empty character literal (e.g., `''`).
+        *   Multi-character literal (e.g., `'ab'` unless part of a valid escape sequence that resolves to one character).
+        *   Unterminated character literal (e.g., `'` followed by EOF or newline without closing `'`).
+        *   Invalid escape sequence within the literal.
 *   **Boolean Literals**: Handled as keywords `true` and `false`.
 
 ## 8. Operator and Punctuation Recognition
 
-*   The lexer will use rules to match the various operators and punctuation symbols defined in `RFC-001_SYNTAX_GRAMMAR.md` (e.g., `+`, `->`, `&&`, `..=`).
+*   The lexer will use rules to match the various operators and punctuation symbols defined in `docs/rfc/RFC-001_SYNTAX_GRAMMAR.md` (e.g., `+`, `->`, `&&`, `..=`).
 *   Care must be taken with multi-character operators (e.g., `==` vs `=`, `->` vs `-`, `..=` vs `..`) to ensure longest match (maximal munch principle).
 
 ## 9. Error Handling
@@ -125,10 +140,9 @@ The lexer will produce a stream (or list/vector) of `Token` objects. Each `Token
 
 ## 11. Open Questions & Future Considerations (Lexer Specific)
 
-*   **(LEX-1)** Define precise tab stop policy (e.g., 1 tab = 4 spaces) and error handling strategy for mixed tabs/spaces used for indentation.
-*   **(LEX-2)** Finalize if `and`/`or` keyword-to-operator-token conversion happens in the lexer or is handled as alternatives by the parser.
+*   **(LEX-1)** Define precise tab stop policy (e.g., 1 tab = 4 spaces) and error handling strategy for mixed tabs/spaces used for indentation. **(Resolved: Tabs expand to 4 spaces. Mixing tabs and spaces in the indentation prefix of a single line is a lexical error.)**
+*   **(LEX-2)** Finalize if `and`/`or` keyword-to-operator-token conversion happens in the lexer or is handled as alternatives by the parser. **(Resolved: Lexer normalizes `and` to `&&` token, and `or` to `||` token.)**
 *   Support for raw string literals (e.g., `r"..."`) or multi-line string literals (e.g., `"""..."""`).
-*   Support for character literals (e.g., `'a'`).
 *   Detailed parsing of float exponents and support for hexadecimal/binary float literals if added.
 *   Strategy for handling shebangs (`#!...`) at the start of script files (e.g., treat as a special kind of comment on the first line).
 *   Lexer performance benchmarks and optimization strategies (#LX-perf).

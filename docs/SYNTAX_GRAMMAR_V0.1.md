@@ -148,6 +148,7 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
                     | "false"     (* Boolean literal *)
                     | "and"       (* Logical AND (alias for &&) *)
                     | "or"        (* Logical OR (alias for ||) *)
+                    | "extern"    (* External function/variable block specifier *)
                   (*| "if"      | "else"    | "loop"    | "while"   | "for"   *)
                   (*| "return"  | "break"   | "continue"| "import"  | "export"*)
                   (*| "type"    | "pub"     | "static"  | "const"   | "super" *)
@@ -176,7 +177,7 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
                     | IntegerLiteral
                     | FloatLiteral
                     | BooleanLiteral
-                    (* | CharacterLiteral (* To be decided if needed *) *)
+                    | CharacterLiteral
 
           StringLiteral ::= StandardStringLiteral (* | RawStringLiteral | MultiLineStringLiteral *)
 
@@ -220,8 +221,8 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
 
           BooleanLiteral ::= "true" | "false"
 
-          (* CharacterLiteral ::= "\'" ( StringCharacter | SimpleEscapeSequenceNoQuote | UnicodeEscapeSequence ) "\'" *)
-          (* SimpleEscapeSequenceNoQuote ::= "\\" | "\n" | "\r" | "\t" | "\0" (* Excludes \' *) *)
+          CharacterLiteral ::= "\'" ( StringCharacter | SimpleEscapeSequenceNoQuote | UnicodeEscapeSequence ) "\'"
+          SimpleEscapeSequenceNoQuote ::= "\\" | "\n" | "\r" | "\t" | "\0" (* Excludes \' *)
 
           DIGIT        ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
           HEX_DIGIT    ::= DIGIT | "a" | "b" | "c" | "d" | "e" | "f"
@@ -267,6 +268,22 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
                       (*| ... other punctuation/operators ... *)
           ```
 
+      (* NEW SECTION FOR ATTRIBUTES *)
+      1.3.5 Attributes (* General syntactic markers/annotations *)
+          ```ebnf
+          AttributeListOpt ::= (Attribute)*
+          Attribute        ::= "#[" AttributeContent "]"
+          (* Example: #[test], #[derive(Copy, Debug)], #[ai.assume(nll="noalias")], #[gpu], #[gpu(target_env="vulkan1.2")] *)
+          (* Note: Inner attributes like `#![allow(dead_code)]` for module/crate scope are TBD if needed. *)
+
+          AttributeContent   ::= AttributePath ( "(" AttributeArguments? ")" )? 
+          AttributePath      ::= IDENTIFIER ( "." IDENTIFIER )*     (* e.g., test, derive, ai.assume, cfg.test *)
+          AttributeArguments ::= Expression ( "," Expression)* (",")? 
+                               (* Arguments are parsed as a list of expressions. 
+                                  The specific structure expected (e.g., key=value, single literal) 
+                                  is typically defined by the semantic rules of each attribute. *)
+          ```
+
 ---
 
 ## 2. Declarations
@@ -280,21 +297,46 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
 
   2.2 Function Declaration
       ```ebnf
-      FunctionDecl ::= ("async")? "fn" IDENTIFIER ParameterList ( "->" Type )? Block
+      FunctionDecl ::= AttributeListOpt ("pub")? ("unsafe")? ("async")? ("extern" AbiStringLiteral)? "fn" IDENTIFIER ParameterList ( "->" Type )? ( Block | ";" )
       (* Example: async fn fetch(url: String) -> Result<Response> { ... } *)
+      (* Example: #[test] fn my_test_function() { ... } *)
+      (* Example (exporting for FFI): pub extern "C" fn my_exported_c_func(p: *const c_char) -> c_int; *)
+      (* Example (exporting for FFI with body): pub extern "C" fn my_ferra_func_for_c() -> i32 { return 42; } *)
+      (* If Block is absent, a semicolon is required, indicating a forward declaration or an extern function without a Ferra body (if not in an extern block). *)
+      (* `pub` controls visibility. `unsafe` may be used for functions with unsafe bodies. `async` for async functions. *)
+      (* `extern AbiStringLiteral` here is used for defining the calling convention of a Ferra function, typically for exporting it. *)
       (* TODO: Generics, where-clauses *)
 
       ParameterList ::= "(" (Parameter ("," Parameter)*)? ")"
-      Parameter       ::= IDENTIFIER ":" Type
+      Parameter       ::= AttributeListOpt IDENTIFIER ":" Type
+      (* Example: fn process_data(#[ai.assume(nll="noalias")] data_slice: &mut [u8]) { ... } *)
       ```
 
   2.3 Data Class Declaration
       ```ebnf
-      DataClassDecl ::= "data" IDENTIFIER "{" FieldList? "}"
+      DataClassDecl ::= AttributeListOpt "data" IDENTIFIER "{" FieldList? "}"
       (* Example: data User { id: Int, name: String, email: String } *)
+      (* Example: #[derive(Debug)] data Point { x: Int, y: Int } *)
 
       FieldList     ::= Field ("," Field)* (",")?
-      Field         ::= IDENTIFIER ":" Type
+      Field         ::= AttributeListOpt IDENTIFIER ":" Type
+      (* Example: data Config { #[serde.rename("max_items")] max_items_limit: Int } *) 
+      ```
+
+  2.4 External Block Declaration (New for FFI)
+      ```ebnf
+      ExternBlock ::= AttributeListOpt "extern" AbiStringLiteral "{" (ExternalItem)* "}"
+      AbiStringLiteral ::= StringLiteral (* Lexically a string literal. Semantically, for FFI, common values include "C", "system". The compiler will validate allowed ABI strings. *)
+
+      ExternalItem ::= ExternFunctionDecl
+                     | ExternVariableDecl
+                     (* | ExternTypeAliasDecl (* For declaring external C typedefs if needed *) *)
+
+      ExternFunctionDecl ::= AttributeListOpt ("async")? "fn" IDENTIFIER ParameterList ( "->" Type )? ";"
+      (* Note: Semicolon terminator, no Block body. `async` here is likely not applicable for standard C FFI. *)
+
+      ExternVariableDecl ::= AttributeListOpt "static" IDENTIFIER ":" Type ";"
+      (* Declares an external C global variable. Assumed immutable from Ferra's side (const). *)
       ```
 
 ---
@@ -308,14 +350,17 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
     like fixed-size arrays (e.g., `[T; N]`) and explicit pointer/reference types
     (e.g., `*T`, `&T`) are deferred for future consideration via RFCs, to keep the
     initial type grammar minimal and focused.
+    FFI introduces raw pointer types and extern function types.
   *)
   ```ebnf
   Type ::= TupleType
          | ArrayType
-         | FunctionType
+         | FunctionType          (* Ferra's own function types *)
+         | ExternFunctionType    (* For C-ABI function pointer types *)
+         | RawPointerType        (* For *const T and *mut T *)
          | GenericType
          | QualifiedIdentifier
-         | IDENTIFIER                (* Simple type name, e.g. Int, Float, String, User *)
+         | IDENTIFIER                (* Simple type name, e.g. Int, Float, String, User, c_int *)
 
   TupleType       ::= "(" ( Type ("," Type)* (",")? )? ")"
                   (*  Parser Hint: `()` is the unit type.
@@ -326,7 +371,7 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
   ArrayType       ::= "[" Type "]"
                   (* Represents a dynamic array/list/vector in v0.1, e.g., `[Int]`. *)
 
-  FunctionType    ::= "fn" "(" (ParameterTypeList)? ")" "->" Type
+  FunctionType    ::= ("async")? "fn" "(" (ParameterTypeList)? ")" "->" Type
   ParameterTypeList ::= Type ("," Type)* (",")?
                   (* Represents the type of a function, e.g., `fn(String, Int) -> Bool`. *)
 
@@ -336,6 +381,14 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
 
   QualifiedIdentifier ::= IDENTIFIER ("::" IDENTIFIER)+
                   (* Represents a namespaced type, e.g., `http::Client`. *)
+
+  RawPointerType ::= "*" ("const" Type | "mut" Type)
+                   (* Examples: *const i32, *mut User, *const c_void *)
+                   (* `Type` here refers to the pointee type. *)
+  
+  ExternFunctionType ::= "extern" AbiStringLiteral "fn" "(" (ParameterTypeList)? ")" ("->" Type)?
+                       (* Example: type MyCFnPtr = extern "C" fn(i32) -> i32; *)
+                       (* AbiStringLiteral here also typically "C". *)
   ```
 
 ---
@@ -507,6 +560,16 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
   let result = if explicit_brace_sum(10) > 20 { "big" } else { "small" }
   ```
 
+  (* Note on Data-Parallel Loops:
+     For v0.1, data-parallel iteration constructs (e.g., a parallel `for_each`) are planned
+     to be exposed primarily through method calls on parallel iterator types obtained from
+     collections (e.g., `my_vector.par_iter().for_each(...)`). This approach leverages
+     Ferra's existing expression and method call grammar (Section 4) rather than introducing
+     new dedicated loop keywords or statement syntax at this stage. Refer to the
+     `DATA_PARALLEL_GPU.md` document (Section 2.2) for further details on the design
+     of these data-parallel constructs.
+  *)
+
 ---
 
 ## 6. Module & Macro Forms
@@ -538,38 +601,4 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
   | 5     | Left          | Logical OR             | `                                                                |                                           | ` (primary), `or` (lexer alias)                                  | `opt1 `                                   | ` opt2`, `err1 or err2`                 |
   | 4     | Right         | Nil-Coalescing         | `??`                                                             | `optional_value ?? default`               |
   | 3     | N/A           | (Reserved for Pipeline)| (* `                                                            | >` - Not included in v0.1 *)             |                                           |
-  | 2     | Right         | Assignment             | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`  | `x = 1`, `y += 2`                         |
-  | 1     | N/A           | (Separator/Lowest)     | (* `,` - Primarily a separator, not an infix expr operator *)    |                                           |
-
-  (*
-    Notes on the table:
-    - `()` for function calls and `.` for member access are typically handled specially by the Pratt parser's prefix/infix dispatch.
-    - Array indexing `[]` would also fit in level 14 if added.
-    - Unary `+` is included for completeness.
-    - Comparison operators are non-associative, meaning `a < b < c` is not implicitly `(a < b) < c` or `a < (b < c)`. If chained comparisons are desired, they need specific grammar rules.
-    - The comma `,` is generally a separator in argument lists, parameter lists, array literals, etc., rather than a binary operator in the expression sense (like in C).
-  *)
-
----
-
-## Appendix B. Open Questions / TBD
-
-*   Exact rules for semicolon insertion / optional semicolons (*Now drafted in Sec 1.1 and Sec 5*).
-    *   Refine parser logic for `NEWLINE_AS_TERMINATOR` determination.
-    *   Edge cases with postfix operators (e.g., `?`, `.await`) followed by newline, then a new statement that could ambiguously start an expression (e.g. if it starts with `(` or `{`).
-*   Detailed syntax for all literal types (integers with base prefixes, float notations, string escape sequences, char literals, boolean literals) (*Largely addressed in 1.3.3*).
-*   Syntax for generics (parameters, arguments, where clauses) on functions and data structures.
-*   Error propagation syntax beyond `Result<T>` (e.g., `?` operator details if adopted from Rust) (*`?` as postfix op added to precedence table*).
-*   Module system details (imports, exports, visibility).
-*   Full macro definition and invocation syntax.
-*   Rules for significant indentation if adopted (how INDENT/DEDENT tokens are generated or handled) (*Strategy defined for lexer emitting INDENT/DEDENT; Block can be BraceBlock or IndentedBlock. Hygiene rules defined in Sec 1.1.*).
-*   Interaction of `async`/`await` with expression types (e.g. `await` as a postfix operator or keyword) (*`.await` handled as postfix in expressions*).
-*   Compile-time JSON macro specifics.
-*   Array/List/Map literal syntax.
-*   Tuple syntax (*Type syntax for Tuples and dynamic Arrays/Lists now drafted in Sec 3*).
-*   Control-flow statements (`if/else`, `while`, `for`, `return`, `break`, `continue`) (*Initial EBNF drafted in Sec 4 & 5*).
-*   Parser rules for chained comparisons (e.g., `a < b < c`).
-*   RFC #???: Fixed-size arrays (e.g., `[T; N]`) & pointer/reference types (e.g., `*T`, `&T`).
-*   RFC #???: Loop labels & `break value` semantics.
-*   RFC #???: Formatter canonical style toggle (e.g. `--indent-blocks` flag).
-*   Precise EBNF for single-statement shortcuts after control keywords (e.g., `if cond print("hi")`).
+  | 2     | Right         | Assignment             | `

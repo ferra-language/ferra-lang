@@ -3,35 +3,61 @@ description:
 globs: 
 alwaysApply: false
 ---
-# Ferra Project: Collaboration Guidelines
+# Ferra Project: Collaboration Guidelines 
 
-This rule outlines the working principles for our collaboration on the Ferra project, with a special emphasis on clear communication and comprehensive documentation, recognizing that the user is guiding the project vision and I (the AI assistant) am facilitating its technical design and documentation.
+This rule outlines the working principles for our collaboration on the Ferra project, with a special emphasis on clear communication, comprehensive documentation, structured development processes, and recognizing that the user is guiding the project vision and I (the AI assistant) am facilitating its technical design and documentation.
 
-## 1. Vision Holder & AI Facilitator
-*   **User as Vision Holder**: You (the user) are the chief architect and visionary for this programming language. Your design brief and ongoing direction guide the project.
-*   **AI as Technical Facilitator & Documentarian**: My role (as the AI assistant) is to help translate your vision into technical specifications, draft designs, generate code/pseudocode where appropriate, and meticulously document every step of the process.
+## 1. Roles & Responsibilities
+*   **User as Vision Holder & Lead**: You (the user) are the chief architect, visionary for Ferra, and project lead. Your design brief, `Steps.md`, and ongoing direction guide the project.
+*   **AI as Technical Facilitator & Documentarian**: My role (as the AI assistant) is to help translate your vision into technical specifications, draft designs, generate code/pseudocode where appropriate, meticulously document every step, and assist in specification checks.
+*   **Future Roles (Anticipated)**: As the project might grow, we anticipate potential roles such as:
+    *   *Implementer*: Focuses on writing code based on locked specifications.
+    *   *Reviewer*: Provides code reviews and feedback.
+    *   *Maintainer*: Manages repositories, CI, and releases.
+    *(Specific permissions and responsibilities for these roles will be defined if/when additional collaborators join.)*
 
-## 2. `Steps.md` as the Primary Blueprint
-*   The detailed technical specification and roadmap provided by Dr. Hoare in `Steps.md` (including the YAML header) will serve as our primary technical blueprint.
+## 2. Blueprint Hierarchy & Guiding Documents
+*   **Document Primacy**: Our work will be guided by the following hierarchy of documents:
+    1.  **`Steps.md` (Dr. Hoare’s Technical Blueprint)**: Contains core technical requirements, the YAML spec header, and serves as the primary technical guide.
+    2.  **`comprehensive_plan.md` (Phase/Module Breakdown)**: Outlines the phased execution roadmap, breaking the project into manageable modules and steps.
+    3.  **RFCs / Specification Documents (e.g., `DESIGN_*.md`, `CONCURRENCY_MODEL.md`)**: Provide detailed design and specifications for individual modules, features, or components, directly implementing items from the comprehensive plan.
 *   The original "Design Brief v4" will be used for overarching goals and context where `Steps.md` is less specific.
 
-## 3. Modular & Iterative Progress
-*   We will tackle the project using the `comprehensive_plan.md`, breaking it down into phases and modules.
-*   Progress will be iterative. For each module or significant feature, we will:
+## 3. Modular, Iterative Progress & "Definition of Done"
+*   We will tackle the project using the `comprehensive_plan.md`, focusing on modules iteratively.
+*   **Typical Module/Feature Cycle**:
     1.  Discuss and refine requirements based on the plan and your input.
     2.  I will draft the technical design, specifications, or (pseudo)code.
     3.  We will review it together.
     4.  Crucially, I will then produce detailed documentation for what was decided and designed.
+*   **"Definition of Done" for Doc → Code Cycles**: To ensure clarity and completeness, each significant feature or module moving from design to implementation should aim to meet these criteria:
+    *   [ ] Specification document reviewed and "locked" (approved by Vision Holder), with a "Last Reviewed" date and version noted in its front matter (e.g., `CONCURRENCY_MODEL-v0.1.md` once locked).
+    *   [ ] (If applicable) Stub crate/module structure created in the codebase.
+    *   [ ] Initial smoke test(s) written (can be a "first failing test" to guide implementation).
+    *   [ ] Implementation developed to satisfy the specification and pass tests.
+    *   [ ] CI checks passing.
 
 ## 4. Documentation-Driven Approach
 *   **Documentation First (or Immediately After)**: For every module, feature, design decision, or significant piece of work, comprehensive documentation will be created *concurrently* or *immediately following* its specification or design.
+*   **Document Status**: Each specification document should include a "Status" (e.g., Draft, Review, Locked) and a "Last Reviewed" or "Version" date in its front matter to clearly indicate its maturity and when its design was considered stable. Filenames may be appended with a version (e.g., `-v0.1`) once a spec is considered stable/frozen for that version.
 *   **Clarity for All Levels**: Documentation will aim for clarity, sufficient for you to understand the design and for future developers to implement it. This means high-level summaries and detailed technical breakdowns.
-*   **Living Documents**: The `comprehensive_plan.md` and other key design documents will be "living documents," updated as the project evolves.
+*   **Living Documents**: The `comprehensive_plan.md` and other key design documents will be "living documents," updated as the project evolves, unless explicitly versioned and frozen.
 *   **My Responsibility**: I will take the lead in drafting all technical documentation, which we will then review together.
 
-## 5. Explicit Tasking & Goal Orientation
-*   When assigning tasks, please link them to specific modules or steps in the `comprehensive_plan.md`. This helps maintain focus and ensures we are building towards the defined goals.
-*   I will confirm my understanding of each task before proceeding.
+## 5. Development Practices
+*   **Explicit Tasking & Goal Orientation**:
+    *   When assigning tasks, please link them to specific modules or steps in the `comprehensive_plan.md`.
+    *   I will confirm my understanding of each task before proceeding.
+*   **Testing & CI**:
+    *   Every module or significant feature design must include considerations for testing.
+    *   Prior to implementation, at least one smoke test (or a plan for initial tests) should be defined.
+    *   A conceptual CI workflow stub should be considered, potentially residing in a standard location like `.github/workflows/ci.yml` (or equivalent for the chosen CI platform), to be fleshed out as implementation proceeds.
+*   **Code Contribution Workflow (Illustrative for future team context)**:
+    1.  Branch off a main development branch (e.g., `develop`), using a clear naming convention (e.g., `feat/module-feature` like `feat/lexer-indent`).
+    2.  Open a Pull Request (PR) when ready for review, referencing the relevant specification document or tag (e.g., `LEX-1` from `DESIGN_LEXER.md`).
+    3.  Assign PRs for review (e.g., to AI assistant for spec check, to other collaborators for code review).
+    4.  Ensure all Continuous Integration (CI) checks pass.
+    5.  Merge PRs upon approval.
 
 ## 6. Decision Making & Option Presentation
 *   For complex technical decisions not explicitly detailed in `Steps.md`, I will research and present options, outlining pros, cons, and potential implications in an accessible manner to support your decision-making process.
@@ -40,13 +66,36 @@ This rule outlines the working principles for our collaboration on the Ferra pro
 ## 7. AI-Native Focus
 *   We will continuously evaluate how each component interacts with or supports the planned AI APIs (`ai::ast`, `ai::refactor`, `ai::verify`) and the overall goal of an "AI-Native" language.
 
-## 8. Regular Check-ins & Feedback
-*   We will maintain open communication. Please provide feedback on my outputs (designs, documentation, explanations) to ensure they align with your vision and understanding.
-*   I will ask clarifying questions to ensure I have sufficient information.
+## 8. Communication & Feedback
+*   **Channels**:
+    *   **Design & Iteration**: This Cursor Chat.
+    *   **Issue Tracking & Project Management**: GitHub Issues (once a repository is actively used for code).
+        *   **GitHub Issue Labels & Milestones**: Utilize labels (e.g., `type:bug`, `type:feature`, `area:lexer`, `area:parser`, `priority:P0`, `priority:P1`) and milestones to keep the backlog organized and track progress against larger goals.
+        *   **Project View**: We may utilize a GitHub Projects board (or similar tool) for a high-level view of task status and progress across modules.
+    *   **Quick Questions/Async Updates**: (To be defined, e.g., a specific Slack/Discord channel if the project grows).
+*   **Regular Check-ins**:
+    *   We will maintain open communication. Please provide feedback on my outputs to ensure they align with your vision.
+    *   I will ask clarifying questions to ensure I have sufficient information.
+    *   **Weekly Sync (Proposed)**: Consider a brief, structured update (e.g., every Friday via chat or a short call) to triage open questions, review progress, and re-prioritize if necessary. A simple chat template could be:
+        *   *What did we complete this week?*
+        *   *What, if anything, is blocked?*
+        *   *What are the key priorities for next week?*
 
 ## 9. File Management
 *   I will create and update files in the project workspace as needed, always informing you of new files or significant changes.
-*   We will strive to maintain a clean and organized project directory.
+*   **Preferred Directory Structure (General Guide)**:
+    *   `docs/`: All design documents, specifications, RFCs.
+    *   `src/` or `crates/` (if Rust-based): Source code, organized by module/crate.
+    *   `stdlib/`: Source code for the Ferra standard library.
+    *   `examples/`: Sample Ferra programs and use cases.
+    *   `tests/`: Integration tests, benchmarks.
+*   We will strive to maintain a clean and organized project directory, adapting this structure as needed.
 
-## 10. Respecting the User's Pace
+## 10. Versioning and Release Planning (Forward-Looking)
+*   While currently in the design phase, we will keep in mind the need for a versioning strategy and release cadence as the project matures (e.g., `v0.1-alpha`, `v0.1-beta`, `v0.2`, `v1.0`).
+*   **Spec Versioning**: Once a specification document for a particular version is considered stable or "locked," its filename may be appended with the version (e.g., `DESIGN_LEXER-v0.1.md`) to signify its state for that release.
+*   Documentation and code updates will align with these version bumps.
+
+## 11. Respecting the User's Pace
 *   While the project plan has an ambitious timeline, we will proceed at a pace that allows for thorough understanding, decision-making, and documentation.
+---

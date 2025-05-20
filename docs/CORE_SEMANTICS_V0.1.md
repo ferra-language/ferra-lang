@@ -36,6 +36,9 @@ This section lists the canonical built-in types for Ferra v0.1 and their key inv
     *   Default Size: 64-bit (IEEE 754 double-precision).
     *   Literals: As defined in `SYNTAX_GRAMMAR_V0.1.md` (e.g., `3.14`, `1.0e-5`). Underscores (`_`) can be used as visual separators (e.g., `1_000.000_001`), and are ignored by the lexer for value determination.
     *   ⚠️ **TBD**: Support for hexadecimal or binary float literals.
+*   **`Char`**: Represents a single Unicode scalar value.
+    *   Default Size: 32-bit (representing a Unicode codepoint).
+    *   Literals: As defined in `SYNTAX_GRAMMAR_V0.1.md` (e.g., `'a'`, `'\n'`, `'\u{1F600}'`).
 *   **`String`**: Represents a sequence of Unicode characters, encoded as UTF-8.
     *   Immutability: Strings are immutable by default.
     *   Behavior: Conceptually similar to Rust's `String` or Swift's `String` (heap-allocated, growable text).
@@ -58,6 +61,9 @@ This section lists the canonical built-in types for Ferra v0.1 and their key inv
 *   **Function Types**: `fn(T1, T2, ...) -> R`
     *   Representation: The type of a function, capturing parameter types and return type.
     *   Usage: Allows functions to be passed as arguments, returned from other functions, and assigned to variables.
+*   **`data` Types (User-Defined Records/Structs)**:
+    *   Instances of `data` classes (defined with `data MyData { field: Type, ... }`) are compound types.
+    *   **Structural Compatibility (Row Polymorphism)**: Due to row polymorphism (see `DESIGN_TYPE_INFERENCE.md` and `FRONTEND_ENHANCEMENTS.MD`), functions may accept instances of different `data` types if they structurally match the required fields for a given operation. For example, a function expecting a record with a `name: String` field can accept any `data` instance that provides such a field, regardless of other fields it may contain. This allows for a degree of structural subtyping.
 *   **Reserved Generic Type Names (Semantics Deferred to Standard Library)**:
     *   `Result<T, E>`: Intended for error handling (representing success `T` or error `E`).
     *   `Option<T>`: Intended for representing optional values (present `T` or absent).

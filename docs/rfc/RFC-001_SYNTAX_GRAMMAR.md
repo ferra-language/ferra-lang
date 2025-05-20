@@ -176,7 +176,7 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
                     | IntegerLiteral
                     | FloatLiteral
                     | BooleanLiteral
-                    (* | CharacterLiteral (* To be decided if needed *) *)
+                    | CharacterLiteral
 
           StringLiteral ::= StandardStringLiteral (* | RawStringLiteral | MultiLineStringLiteral *)
 
@@ -220,8 +220,8 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
 
           BooleanLiteral ::= "true" | "false"
 
-          (* CharacterLiteral ::= "\'" ( StringCharacter | SimpleEscapeSequenceNoQuote | UnicodeEscapeSequence ) "\'" *)
-          (* SimpleEscapeSequenceNoQuote ::= "\\" | "\n" | "\r" | "\t" | "\0" (* Excludes \' *) *)
+          CharacterLiteral ::= "\'" ( StringCharacter | SimpleEscapeSequenceNoQuote | UnicodeEscapeSequence ) "\'"
+          SimpleEscapeSequenceNoQuote ::= "\\" | "\n" | "\r" | "\t" | "\0" (* Excludes \' *)
 
           DIGIT        ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
           HEX_DIGIT    ::= DIGIT | "a" | "b" | "c" | "d" | "e" | "f"
