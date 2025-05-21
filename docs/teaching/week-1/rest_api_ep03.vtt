@@ -1,0 +1,25 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Define the Todo data model and validation logic.
+
+00:00:05.000 --> 00:00:15.000
+In src/models/todo.lang, add:
+data Todo {
+    id: Int
+    title: String
+    completed: Bool
+    created_at: DateTime
+}
+
+impl Todo {
+    fn validate(self) -> Result<()> {
+        if self.title.len() < 1 {
+            return Err("Title cannot be empty")
+        }
+        if self.title.len() > 100 {
+            return Err("Title too long")
+        }
+        Ok(())
+    }
+} 

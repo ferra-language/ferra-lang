@@ -1,0 +1,12 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Organize your code for maintainability.
+
+00:00:05.000 --> 00:00:10.000
+We'll use folders for models, handlers, server, and tests.
+
+00:00:10.000 --> 00:00:15.000
+In your terminal, run:
+mkdir -p src/{models,handlers,server}
+touch src/models/todo.lang src/handlers/todo.lang src/server/http.lang tests/api_test.lang 

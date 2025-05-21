@@ -1,0 +1,10 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Centralize error responses for consistency.
+
+00:00:05.000 --> 00:00:15.000
+In src/server/http.lang, add:
+fn error_response(status: Int, message: String) -> http.Response {
+    http.Response::new().status(status).json({"error": message})
+} 

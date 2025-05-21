@@ -1,0 +1,17 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Add input validation to prevent bad data.
+
+00:00:05.000 --> 00:00:15.000
+In src/models/todo.lang, add:
+// Add to Todo implementation
+fn validate_input(body: Json) -> Result<()> {
+    if !body.has("title") {
+        return Err("Title is required")
+    }
+    if body.title.type != "string" {
+        return Err("Title must be a string")
+    }
+    Ok(())
+} 

@@ -168,10 +168,10 @@ This document outlines the comprehensive, phased, and modular plan for designing
     *   **Step 3.6.3**: Specify Android AAB generation. ✅
         *   *Documentation*: `BACKEND_EXPANDED_TARGETS.md`.
 
-*   **Module 3.7: Teaching Stack - Day-0 & Week-1 Materials Outline**
-    *   **Step 3.7.1**: Outline "Day-0 lab" content.
-    *   **Step 3.7.2**: Outline "Week-1" tutorial content (e.g., REST API).
-    *   **Step 3.7.3**: Define standards for Markdown, narrated videos, subtitles.
+*   **Module 3.7: Teaching Stack - Day-0 & Week-1 Materials Outline** ✅
+    *   **Step 3.7.1**: Outline "Day-0 lab" content. ✅
+    *   **Step 3.7.2**: Outline "Week-1" tutorial content (e.g., REST API). ✅
+    *   **Step 3.7.3**: Define standards for Markdown, narrated videos, subtitles. ✅
         *   *Documentation*: `TEACHING_MATERIALS_INITIAL.md`.
 
 ---

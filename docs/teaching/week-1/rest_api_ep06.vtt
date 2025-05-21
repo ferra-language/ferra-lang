@@ -1,0 +1,24 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Add the POST endpoint to create new todos.
+
+00:00:05.000 --> 00:00:15.000
+In src/handlers/todo.lang, add:
+fn create_todo(req: http.Request) -> http.Response {
+    let body = req.json()
+    let todo = Todo {
+        id: next_id,
+        title: body.title,
+        completed: false,
+        created_at: DateTime::now()
+    }
+    match todo.validate() {
+        Ok(_) => {
+            todos.push(todo)
+            next_id += 1
+            http.Response::new().status(201).json(todo)
+        }
+        Err(e) => error_response(400, e)
+    }
+} 

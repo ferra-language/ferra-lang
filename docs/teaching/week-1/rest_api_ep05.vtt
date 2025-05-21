@@ -1,0 +1,18 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Implement GET endpoints for listing and fetching todos.
+
+00:00:05.000 --> 00:00:15.000
+In src/handlers/todo.lang, add:
+fn list_todos(req: http.Request) -> http.Response {
+    http.Response::new().json(todos)
+}
+
+fn get_todo(req: http.Request) -> http.Response {
+    let id = req.params.id.to_int()
+    match todos.find(t => t.id == id) {
+        Some(todo) => http.Response::new().json(todo)
+        None => error_response(404, "Todo not found")
+    }
+} 

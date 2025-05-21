@@ -1,0 +1,17 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Implement the DELETE endpoint to remove todos.
+
+00:00:05.000 --> 00:00:15.000
+In src/handlers/todo.lang, add:
+fn delete_todo(req: http.Request) -> http.Response {
+    let id = req.params.id.to_int()
+    match todos.find_index(t => t.id == id) {
+        Some(idx) => {
+            todos.remove(idx)
+            http.Response::new().status(204)
+        }
+        None => error_response(404, "Todo not found")
+    }
+} 

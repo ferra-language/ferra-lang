@@ -15,8 +15,8 @@ These expanded backend targets are essential for Ferra to be a viable language f
     *   To ensure these new backend targets integrate smoothly with Ferra's existing IR, compiler infrastructure, and build tooling.
 
 *   **Relationship to Existing Backends**:
-    *   The design for ARM-64 and Apple Bitcode generation will heavily leverage Ferra's existing LLVM integration, as detailed in `BACKEND_LLVM_X86-64.md`. Many principles of IR-to-LLVM-IR conversion, optimization, and runtime interaction will be applicable.
-    *   For Android AAB generation, packaging considerations will draw upon insights from `BACKEND_WASM_WASI.md` (regarding self-contained deployable units) and will interact closely with the `PACKAGE_MANAGER_SPEC.md` for managing build artifacts and potentially Android-specific dependencies.
+    *   The design for ARM-64 and Apple Bitcode generation will heavily leverage Ferra's existing LLVM integration, as detailed in `BACKEND_LLVM_X86-64.md` (see §3.1). Many principles of IR-to-LLVM-IR conversion, optimization, and runtime interaction will be applicable.
+    *   For Android AAB generation, packaging considerations will draw upon insights from `BACKEND_WASM_WASI.md` (see §2.3) and will interact closely with the `PACKAGE_MANAGER_SPEC.md` (see §3.2) for managing build artifacts and potentially Android-specific dependencies.
 
 *   **Core Requirements (from `Steps.md` & `comprehensive_plan.md`)**:
     *   **Step 3.6.1: Specify ARM-64 backend**: Enable compilation for ARM-64 CPUs.
@@ -36,18 +36,108 @@ This specification aims to pave the way for Ferra to become a truly cross-platfo
 
 While each new backend target (ARM-64, Apple Bitcode, Android AAB) has unique specifics, several common design considerations and infrastructure requirements apply across them. Addressing these cohesively will ensure a more robust and maintainable multi-target compiler.
 
-*   **Conceptual EBNF for Relevant `lang build` Options**:
-    ```ebnf
-    BuildCmd         ::= "lang" "build" BuildOption*
-    BuildOption      ::= TargetOption | EmitFormatOption | PackageFormatOption | OtherBuildFlags
-    TargetOption     ::= "--target" "=" TARGET_TRIPLE
-    EmitFormatOption ::= "--emit" "=" ("ir" | "bc" | "llvm-ir" | "asm" | "lib" | "bin") (* `bc` here could mean generic LLVM bitcode *)
-    PackageFormatOption ::= "--package-format" "=" ("aab" | "ipa" (* conceptual *) | "native_executable" (* default *))
-                        | "--emit-apple-bitcode" (* Boolean flag, implies specific output/linking for Apple targets *)
-    TARGET_TRIPLE    ::= STRING_LITERAL (* e.g., "aarch64-unknown-linux-gnu", "aarch64-apple-ios15.0" *)
-    OtherBuildFlags  ::= (* e.g., "--release", "--opt-level=s" *)
-    ```
-    *Note: This EBNF is illustrative. The actual CLI parsing will depend on the chosen CLI framework. `TARGET_TRIPLE` would be validated against a list of supported/known triples. The `--emit-apple-bitcode` flag is a more specific way to request Bitcode output for relevant Apple targets, possibly influencing linker behavior and object file sections, beyond just a generic `--emit=bc`.* 
+### 2.1 CLI Grammar
+
+The `lang build` command supports various options for targeting different platforms and output formats. Here is the formal grammar:
+
+```ebnf
+BuildCmd         ::= "lang" "build" Option*
+Option           ::= TargetOption | EmitOption | PackageOption | BuildFlag
+TargetOption     ::= "--target" "=" TARGET_TRIPLE
+EmitOption       ::= "--emit" "=" ("ir"|"bc"|"llvm-ir"|"asm"|"lib"|"bin")
+                 | "--emit-apple-bitcode"
+PackageOption    ::= "--package-format" "=" ("native_executable"|"ipa"|"aab")
+TARGET_TRIPLE    ::= STRING_LITERAL
+BuildFlag        ::= "--release" | "--opt-level" "=" ("s"|"z"|"2"|"3")
+```
+
+### 2.2 Toolchain Detection and Management
+
+The Ferra build system follows this process to locate and validate required toolchains:
+
+```ascii
+lang build --target <triple>
+    │
+    ├─► Check Ferra.toml for target-specific settings
+    │   (see §4.6 for Apple, §5.5 for Android)
+    │
+    ├─► Detect Required Toolchains:
+    │   ├─► LLVM/Clang: Check PATH, LLVM_HOME, or Ferra.toml
+    │   ├─► Xcode Tools: Check xcode-select path for Apple targets
+    │   └─► Android NDK: Check ANDROID_NDK_HOME or Ferra.toml
+    │
+    ├─► Validate Toolchain Versions:
+    │   ├─► LLVM ≥ 17.0 (see BACKEND_LLVM_X86-64.md §2.1)
+    │   ├─► Xcode ≥ 14.0 for Bitcode (see §4.3)
+    │   └─► NDK ≥ r25c for Android (see §5.4)
+    │
+    └─► Report Errors via DESIGN_DIAGNOSTICS.md schema
+        if any toolchain is missing or incompatible
+```
+
+### 2.3 CI Integration
+
+The Ferra build system can be integrated into CI pipelines to verify multi-target builds. Here's an example GitHub Actions workflow:
+
+```yaml
+# Example: .github/workflows/multi-target.yml
+name: Multi-Target Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu
+          - aarch64-apple-darwin
+          - aarch64-apple-ios
+          - aarch64-linux-android
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup LLVM
+        uses: llvm/llvm-action@v1
+        with:
+          version: '17.0'
+          
+      - name: Setup Android NDK
+        if: contains(matrix.target, 'android')
+        uses: android-actions/setup-android@v3
+        with:
+          ndk-version: '25.2.9519653'
+          
+      - name: Setup Xcode
+        if: contains(matrix.target, 'apple')
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '14.3.1'
+          
+      - name: Build
+        run: |
+          lang build --target ${{ matrix.target }} --release
+          
+      - name: Package
+        if: contains(matrix.target, 'apple') || contains(matrix.target, 'android')
+        run: |
+          if [[ "${{ matrix.target }}" == *"apple"* ]]; then
+            lang build --target ${{ matrix.target }} --emit-apple-bitcode
+          elif [[ "${{ matrix.target }}" == *"android"* ]]; then
+            lang build --target ${{ matrix.target }} --package-format=aab
+          fi
+```
+
+Add this badge to your README.md:
+```markdown
+[![Multi-Target Build](https://github.com/your-org/ferra/actions/workflows/multi-target.yml/badge.svg)](https://github.com/your-org/ferra/actions/workflows/multi-target.yml)
+```
 
 *   **Toolchain Requirements and Management (TBD EXP-BACKEND-TOOLCHAIN-1)**:
     *   **LLVM Version**: Confirm if the LLVM version used for x86-64 (currently LLVM 17+ as per `BACKEND_LLVM_X86-64.md`) is suitable and sufficient for robust ARM-64 code generation and Apple Bitcode emission, or if specific versions or forks (e.g., Apple's Clang/LLVM for Bitcode) are necessary.
@@ -116,28 +206,53 @@ Ferra's ARM-64 backend will initially aim to support the following common platfo
 
 The initial focus for v0.1 of this backend will be `aarch64-unknown-linux-gnu` and `aarch64-apple-darwin` due to toolchain availability and common development environments, with iOS/Android ARM-64 support being primarily through their respective packaging/Bitcode requirements.
 
-*   **Summary Table of Key ARM-64 Target Triples (Illustrative)**:
+#### Target Triple Reference Table
 
-    | Platform Description         | Example Target Triple         | Primary Use Cases & Notes                                  |
-    |------------------------------|-------------------------------|------------------------------------------------------------|
-    | Linux (GNU) ARM-64           | `aarch64-unknown-linux-gnu`   | Servers, embedded, general Linux on ARM-64.                |
-    | Linux (MUSL) ARM-64          | `aarch64-unknown-linux-musl`  | Lightweight/static-linked Linux on ARM-64.                 |
-    | macOS (Apple Silicon) ARM-64 | `aarch64-apple-darwin`        | Native macOS applications on M-series chips.               |
-    | Windows on ARM-64            | `aarch64-pc-windows-msvc`     | Native Windows applications on ARM-64.                     |
-    | iOS ARM-64                   | `aarch64-apple-ios<version>`  | iOS applications (often involves Bitcode). Example: `aarch64-apple-ios15.0`. |
-    | Android ARM-64 (arm64-v8a)   | `aarch64-linux-android`       | Native libraries for Android `arm64-v8a` ABI.              |
-    | Android ARM-32 (armeabi-v7a) | `armv7a-linux-androideabi`    | Native libraries for older Android `armeabi-v7a` ABI (Future consideration). |
+| Platform Description         | Target Triple         | Primary Use Cases & Notes                                  | Status for v0.1 |
+|------------------------------|-----------------------|------------------------------------------------------------|-----------------|
+| Linux (GNU) ARM-64           | `aarch64-unknown-linux-gnu`   | Servers, embedded, general Linux on ARM-64.                | [RESOLVED] Primary target |
+| Linux (MUSL) ARM-64          | `aarch64-unknown-linux-musl`  | Lightweight/static-linked Linux on ARM-64.                 | [RESOLVED] Secondary target |
+| macOS (Apple Silicon) ARM-64 | `aarch64-apple-darwin`        | Native macOS applications on M-series chips.               | [RESOLVED] Primary target |
+| Windows on ARM-64            | `aarch64-pc-windows-msvc`     | Native Windows applications on ARM-64.                     | [RESOLVED] Secondary target |
+| iOS ARM-64                   | `aarch64-apple-ios<version>`  | iOS applications (often involves Bitcode). Example: `aarch64-apple-ios15.0`. | [RESOLVED] Via Bitcode |
+| Android ARM-64 (arm64-v8a)   | `aarch64-linux-android`       | Native libraries for Android `arm64-v8a` ABI.              | [RESOLVED] Via AAB |
+| Android ARM-32 (armeabi-v7a) | `armv7a-linux-androideabi`    | Native libraries for older Android `armeabi-v7a` ABI.      | [RESOLVED] Deferred to v0.2 |
+
+#### Quick Start Example
+
+Here's a minimal example of building and running a Ferra program for ARM-64 Linux:
+
+```bash
+# Create a new Ferra project
+lang new hello_arm64
+cd hello_arm64
+
+# Write a simple program
+cat > src/main.lang << 'EOF'
+fn main() {
+    println("Hello from ARM-64!")
+}
+EOF
+
+# Build for ARM-64 Linux
+lang build --target aarch64-unknown-linux-gnu --release
+
+# Run the program (on ARM-64 Linux)
+./hello_arm64
+```
+
+For cross-compilation from x86-64 to ARM-64, you'll need the appropriate toolchain installed (see §2.2 for toolchain detection).
 
 ### 3.2. LLVM Integration
 
-The ARM-64 backend will primarily leverage LLVM, building upon the existing infrastructure outlined in `BACKEND_LLVM_X86-64.md`.
+The ARM-64 backend will primarily leverage LLVM, building upon the existing infrastructure outlined in `BACKEND_LLVM_X86-64.md` (see §3.1). Many principles of IR-to-LLVM-IR conversion, optimization, and runtime interaction will be applicable.
 
-*   **LLVM Backend Re-use**: The core logic for Ferra IR to LLVM IR translation (Section 3 of `BACKEND_LLVM_X86-64.md`) will be largely reused. LLVM itself handles the target-specific instruction selection and code generation for ARM-64 once it receives generic LLVM IR.
+*   **LLVM Backend Re-use**: The core logic for Ferra IR to LLVM IR translation (see `BACKEND_LLVM_X86-64.md` §3.2) will be largely reused. LLVM itself handles the target-specific instruction selection and code generation for ARM-64 once it receives generic LLVM IR.
 *   **Target-Specific LLVM Features**:
     *   The Ferra compiler will instruct LLVM to target the appropriate ARM-64 sub-architecture and CPU features (e.g., via `-mcpu` and `-mattr` LLVM flags if exposed, or by configuring the LLVM TargetMachine).
-    *   **NEON SIMD**: LLVM's auto-vectorizer should be able to target ARM NEON SIMD instructions for data-parallel `for_each` constructs (as discussed in `DATA_PARALLEL_GPU.md` Section 3). Specific NEON intrinsics might be exposed in Ferra's standard library in the future if high-level auto-vectorization is insufficient for critical performance needs (TBD ARM-SPECIFIC-1).
+    *   **NEON SIMD**: LLVM's auto-vectorizer should be able to target ARM NEON SIMD instructions for data-parallel `for_each` constructs (as discussed in `DATA_PARALLEL_GPU.md` §3.1). Specific NEON intrinsics might be exposed in Ferra's standard library in the future if high-level auto-vectorization is insufficient for critical performance needs (TBD ARM-SPECIFIC-1).
 *   **Calling Conventions**:
-    *   Adherence to the **AAPCS64 (Procedure Call Standard for the ARM 64-bit Architecture)** is critical for C FFI compatibility and general OS interaction. LLVM handles this when configured for an ARM-64 target.
+    *   Adherence to the **AAPCS64 (Procedure Call Standard for the ARM 64-bit Architecture)** is critical for C FFI compatibility and general OS interaction. LLVM handles this when configured for an ARM-64 target. See `FFI_C_CPP.md` §2.1 for detailed ABI requirements.
 *   **LLVM Version**: Ensure the chosen LLVM version (17+ per existing docs) has mature and robust support for the targeted ARM-64 platforms and features.
 
 ### 3.3. Ferra IR to LLVM IR for ARM-64
@@ -164,15 +279,16 @@ Most of the Ferra IR to LLVM IR mapping defined in `BACKEND_LLVM_X86-64.md` (Sec
 
 ### 3.5. Debug Information
 
-*   **DWARF Generation**: Generation of DWARF debug information for ARM-64 targets, compatible with debuggers like LLDB and GDB on ARM-64 platforms. This follows the principles in `BACKEND_LLVM_X86-64.md` (Section 6).
-*   Ensuring accurate source mapping, variable tracking, and call stack information.
+*   **DWARF Generation**: Generation of DWARF debug information for ARM-64 targets, compatible with debuggers like LLDB and GDB on ARM-64 platforms. This follows the principles in `BACKEND_LLVM_X86-64.md` (see §6.2).
+    *   Ensuring accurate source mapping, variable tracking, and call stack information.
 
 ### 3.6. Open Questions/TBD (ARM-64)
 
-*   **(ARM-TARGET-TRIPLES-1)**: Final list of officially supported ARM-64 target triples for Linux, macOS, and Windows for v0.1, and the default selection logic.
-*   **(ARM-SPECIFIC-INTRINSICS-1)**: Strategy for exposing specific ARM-64 intrinsics (e.g., advanced NEON, cryptography extensions) to Ferra code if high-level abstractions or LLVM auto-vectorization are insufficient for certain performance-critical tasks. This is likely future work beyond v0.1.
-*   **(ARM-ABI-VARIANTS-1)**: Investigation and handling of any subtle C ABI differences or calling convention nuances between the various ARM-64 OS targets (Linux variants, macOS, Windows) that might affect FFI. LLVM typically manages this, but verification is needed.
-*   **(ARM-TESTING-HW-1)**: Availability of diverse ARM-64 hardware (or accurate emulators) for comprehensive CI testing across different OSes and CPU vendors (e.g., Apple Silicon, Qualcomm Snapdragon, AWS Graviton).
+*   **TBD ARM-SPECIFIC-1**: Should Ferra's standard library expose specific ARM NEON SIMD intrinsics for high-performance data-parallel operations, or rely solely on LLVM's auto-vectorizer for `for_each` constructs? This is a performance optimization question that might be addressed in future versions. [RESOLVED for v0.1: Rely on LLVM auto-vectorizer]
+*   **TBD ARM-TARGET-TRIPLES-1**: Final list of officially supported ARM-64 target triples for Linux, macOS, and Windows for v0.1, and the default selection logic. [RESOLVED for v0.1: See Target Triple Reference Table in §3.1]
+*   **TBD ARM-SPECIFIC-INTRINSICS-1**: Strategy for exposing specific ARM-64 intrinsics (e.g., advanced NEON, cryptography extensions) to Ferra code if high-level abstractions or LLVM auto-vectorization are insufficient for certain performance-critical tasks. This is likely future work beyond v0.1.
+*   **TBD ARM-ABI-VARIANTS-1**: Investigation and handling of any subtle C ABI differences or calling convention nuances between the various ARM-64 OS targets (Linux variants, macOS, Windows) that might affect FFI. LLVM typically manages this, but verification is needed.
+*   **TBD ARM-TESTING-HW-1**: Availability of diverse ARM-64 hardware (or accurate emulators) for comprehensive CI testing across different OSes and CPU vendors (e.g., Apple Silicon, Qualcomm Snapdragon, AWS Graviton).
 
 ## 4. Apple Bitcode Backend Specification (Step 3.6.2)
 
@@ -235,34 +351,35 @@ The generation of Apple Bitcode within the Ferra compilation flow would generall
     *   Detect if Xcode command-line tools are installed and accessible.
     *   Invoke the correct Clang/LLVM executables from the Xcode toolchain with the appropriate flags.
     *   This is part of the broader TBD EXP-BACKEND-TOOLCHAIN-1 concerning management of external SDKs and toolchains.
-*   **Manifest Configuration (`Ferra.toml`) for Apple Targets (Conceptual)**:
-    *   Specific settings for Apple targets, including Bitcode generation, might be configurable in `Ferra.toml` under a target-specific section.
+*   **Manifest Configuration (`Ferra.toml`) for Apple Targets**:
+    *   Specific settings for Apple targets, including Bitcode generation, are configurable in `Ferra.toml` under a target-specific section (see `PACKAGE_MANAGER_SPEC.md` §3.2 for the full manifest schema):
         ```toml
+        # Example Ferra.toml (Apple target settings)
         [package]
         name = "my_ios_app_lib"
-        # ...
+        version = "0.1.0"
+        authors = ["Your Name <your.email@example.com>"]
 
         [target.aarch64-apple-ios]
-        # sdk_path = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
-        # min_ios_version = "15.0"
-        # enable_bitcode = true # Could be a build flag or a manifest setting
+        sdk_path = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
+        min_ios_version = "15.0"
+        enable_bitcode = true  # Required for App Store submission
 
         [target.aarch64-apple-darwin]
-        # enable_bitcode = false # e.g., default to false for macOS native unless specified
+        enable_bitcode = false  # Default to false for macOS native unless specified
         ```
-    *   This allows project-specific overrides or configurations for Apple platform builds. The Ferra build system would use these to set appropriate compiler and linker flags.
 
 ### 4.7. Interaction with UI-DSL for Mobile (`UI_DSL_MOBILE.md`)
 
 *   For Ferra applications developed using the UI-DSL and targeting iOS, watchOS, or tvOS, this Bitcode generation backend is essential for App Store distribution.
-*   The Ferra native library component (containing application logic and UI state management) would be compiled with Bitcode enabled, and then linked into the standard Xcode project structure which also includes the Swift UI code generated from the Ferra UI-DSL (as per `UI_DSL_MOBILE.md` Section 3.3).
+*   The Ferra native library component (containing application logic and UI state management) would be compiled with Bitcode enabled, and then linked into the standard Xcode project structure which also includes the Swift UI code generated from the Ferra UI-DSL (as per `UI_DSL_MOBILE.md` §3.3).
 
 ### 4.8. Open Questions/TBD (Apple Bitcode)
 
-*   **(BITCODE-LLVM-VER-1)**: Determine the specific range of Apple Clang/LLVM versions that Ferra should target for generating compatible Bitcode for current App Store submission policies. How to handle changes in Apple's required versions.
-*   **(BITCODE-MARKERS-1)**: Investigate if any special metadata, markers, or specific LLVM IR annotations (beyond standard `-fembed-bitcode`) are needed or beneficial for Apple's Bitcode processing or re-optimization.
-*   **(BITCODE-VALIDATION-1)**: Tools or processes for validating Ferra-generated Bitcode for App Store compatibility before submission (e.g., using `otool` or other Apple-provided utilities to inspect embedded Bitcode sections).
-*   **(BITCODE-FAT-BINARIES-1)**: How Bitcode generation interacts with the creation of "fat binaries" or XCFrameworks that might contain slices for multiple Apple platforms (e.g., iOS device, iOS simulator) or architectures.
+*   **TBD BITCODE-LLVM-VER-1**: Determine the specific range of Apple Clang/LLVM versions that Ferra should target for generating compatible Bitcode for current App Store submission policies. How to handle changes in Apple's required versions.
+*   **TBD BITCODE-MARKERS-1**: Investigate if any special metadata, markers, or specific LLVM IR annotations (beyond standard `-fembed-bitcode`) are needed or beneficial for Apple's Bitcode processing or re-optimization.
+*   **TBD BITCODE-VALIDATION-1**: Tools or processes for validating Ferra-generated Bitcode for App Store compatibility before submission (e.g., using `otool` or other Apple-provided utilities to inspect embedded Bitcode sections).
+*   **TBD BITCODE-FAT-BINARIES-1**: How Bitcode generation interacts with the creation of "fat binaries" or XCFrameworks that might contain slices for multiple Apple platforms (e.g., iOS device, iOS simulator) or architectures.
 
 Successful Apple Bitcode generation will enable Ferra developers to reach the broad audience on Apple's platforms using the App Store.
 
@@ -283,18 +400,7 @@ This section details Ferra's strategy for packaging applications as Android App 
 
 ### 5.3. AAB Structure Overview
 
-An AAB (`.aab` file) is a publishing format that includes all of an app's compiled code and resources. Key components relevant to Ferra:
-
-*   **Base Module**: Contains the core application code and resources, including:
-    *   `AndroidManifest.xml`
-    *   Compiled DEX files (from Java/Kotlin code, e.g., UI code generated from Ferra UI-DSL).
-    *   Resources (`res/` directory).
-    *   Assets (`assets/` directory).
-    *   Native libraries (`lib/<ABI>/lib<ferra_app_name>.so`).
-*   **Configuration APKs**: Generated by Google Play from the AAB to target specific device configurations. Not directly created by Ferra, but the AAB must contain the necessary information for their generation.
-*   **Dynamic Feature Modules (Future)**: Optional modules that can be downloaded on demand. Not a focus for Ferra's initial AAB support.
-
-Ferra's AAB generation will focus on correctly packaging the base module, especially the Ferra-compiled native libraries.
+An AAB (`.aab` file) is a publishing format that includes all of an app's compiled code and resources. Key components relevant to Ferra are detailed in `UI_DSL_MOBILE.md` §4.2.
 
 ### 5.4. Ferra Integration for AAB Generation
 
@@ -303,7 +409,7 @@ The Ferra build system (`lang build`) will be responsible for orchestrating the 
 *   **Input to AAB Generation Process**:
     1.  **Compiled Ferra Native Libraries**: Ferra code (application logic, potentially parts of the UI-DSL implementation if native) compiled into shared object (`.so`) files for all targeted Android ABIs (e.g., `arm64-v8a`, `armeabi-v7a`). This relies on the ARM-64 backend (Section 3) and potentially an ARM-32 backend if supported.
     2.  **Android Application Manifest (`AndroidManifest.xml`)**: Either provided by the developer or generated by Ferra tooling based on `Ferra.toml` settings.
-    3.  **Java/Kotlin Code (if any)**: For Android apps using Ferra UI-DSL, this includes the Kotlin/Jetpack Compose UI code generated by the Ferra compiler (see `UI_DSL_MOBILE.md` Section 4). For purely native Ferra apps, this might be minimal (e.g., a basic Activity to load the Ferra library).
+    3.  **Java/Kotlin Code (if any)**: For Android apps using Ferra UI-DSL, this includes the Kotlin/Jetpack Compose UI code generated by the Ferra compiler (see `UI_DSL_MOBILE.md` §4). For purely native Ferra apps, this might be minimal (e.g., a basic Activity to load the Ferra library).
     4.  **Resources and Assets**: Standard Android `res/` and `assets/` directories provided by the developer.
 
 *   **Tooling**:
@@ -329,11 +435,13 @@ The Ferra build system (`lang build`) will be responsible for orchestrating the 
 ### 5.5. Manifest and Configuration (`Ferra.toml` and `AndroidManifest.xml`)
 
 *   **`Ferra.toml` Android Settings**:
-    *   A new section, e.g., `[target.android]`, in `Ferra.toml` could specify AAB-related metadata and build configurations:
+    *   A new section, e.g., `[target.android]`, in `Ferra.toml` specifies AAB-related metadata and build configurations (see `PACKAGE_MANAGER_SPEC.md` §3.2 for the full manifest schema):
         ```toml
+        # Example Ferra.toml (Android target settings)
         [package]
         name = "my_ferra_android_app"
-        # ...
+        version = "0.1.0"
+        authors = ["Your Name <your.email@example.com>"]
 
         [target.android]
         application_id = "com.example.myferraapp"
@@ -344,128 +452,122 @@ The Ferra build system (`lang build`) will be responsible for orchestrating the 
         # Permissions used by Ferra native code would still be in [package.permissions]
         # but these might inform parts of AndroidManifest.xml
         ```
-*   **`AndroidManifest.xml` (TBD AAB-MANIFEST-1)**:
-    *   **Generation vs. User-Provided**:
-        *   Option A: Ferra tooling generates a basic `AndroidManifest.xml` based on `Ferra.toml` settings and conventions (e.g., for the main activity that loads the Ferra library).
-        *   Option B: The developer provides a full `AndroidManifest.xml` in their project.
-        *   Option C (Hybrid): Ferra generates a manifest but allows the developer to provide overrides or additions.
-    *   **Content**: Must declare application components (activities, services), permissions (Android permissions, distinct from Ferra's `manifest.perms` but potentially informed by them), hardware features, etc.
-    *   If Ferra code is primarily native logic loaded by a standard Android Activity (Java/Kotlin), the manifest might be quite simple. If using the Ferra UI-DSL, the generated Kotlin activities would need to be declared.
-
-### 5.6. Interaction with UI-DSL for Mobile (`UI_DSL_MOBILE.md`)
-
-*   Android AAB generation is the primary delivery mechanism for Ferra applications built using the UI-DSL for Android.
-*   The process involves:
-    1.  Ferra UI-DSL code compiled to Kotlin/Jetpack Compose UI code (as per `UI_DSL_MOBILE.md` Section 4).
-    2.  Ferra application logic compiled to native `.so` libraries.
-    3.  Both the generated Kotlin and the Ferra `.so` libraries are packaged into the AAB.
-    4.  The `AndroidManifest.xml` will need to declare the main Activity that hosts the Compose UI.
-
-### 5.7. Native Library (`.so`) Considerations
-
-*   **ABI Support**: The build system must correctly compile Ferra code for each required Android ABI (e.g., `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`). The `lang build --target android` command might default to a common set (e.g., `arm64-v8a`, `armeabi-v7a`) or allow explicit ABI specification.
-*   **Naming**: Native libraries for Ferra code should follow standard Android naming conventions (e.g., `lib<module_name>.so`).
-*   **Stripping**: Native libraries should be stripped of unnecessary debug symbols for release AABs to reduce size (standard practice with NDK builds).
-*   **Dependencies**: If Ferra native code itself has FFI dependencies on other pre-compiled `.so` files, these must also be correctly packaged into the AAB under the appropriate ABI directories. `PACKAGE_MANAGER_SPEC.md`'s handling of native dependencies is relevant here.
 
 ### 5.8. Signing AABs
 
 *   AABs must be cryptographically signed with an upload key before they can be uploaded to Google Play. Google Play then re-signs the derived APKs with an app signing key.
 *   **Ferra Tooling Support**:
-    *   The `lang build ... --package-format=aab` command itself might not perform the signing directly.
-    *   Instead, it will produce an unsigned AAB (e.g., `myapp-unsigned.aab`).
-    *   Developers would then use standard Android tooling to sign the AAB with their upload key. For example, using `jarsigner` (though `apksigner` is more modern for APKs, `bundletool` handles AAB signing implicitly if configured, or a separate signing step might be needed for the raw AAB if not using Gradle for this part):
+    *   The `lang build ... --package-format=aab` command produces an unsigned AAB (e.g., `myapp-unsigned.aab`).
+    *   Developers then use standard Android tooling to sign the AAB. Here's a concrete example using `bundletool` (the recommended approach):
         ```bash
-        # Example using jarsigner (less common for AABs directly, usually for APKs within bundle if self-generating)
-        # More typically, if using Gradle, signing is configured in build.gradle.
-        # If bundletool is used and it doesn't sign, one might sign the generated APKs from the AAB.
-        # For direct AAB signing if needed and supported by a tool:
-        # hypothetical_aab_signer --keystore my-release-key.keystore --ks-key-alias my-alias \
-        #                          --ks-pass pass:password --key-pass pass:password \
-        #                          myapp-unsigned.aab myapp-signed.aab 
-        # NOTE: The standard Android workflow is to configure signing in Gradle, which then correctly signs the AAB.
-        # Ferra documentation will point to standard Android procedures for AAB signing.
+        # Example: Signing an AAB with bundletool
+        # 1. First, build the AAB
+        lang build --target android --package-format=aab
+
+        # 2. Sign the AAB using bundletool
+        bundletool build-bundle \
+            --modules=myapp-unsigned.aab \
+            --output=myapp-signed.aab \
+            --ks=my-release-key.keystore \
+            --ks-pass=pass:your_keystore_password \
+            --ks-key-alias=your_key_alias \
+            --key-pass=pass:your_key_password
+
+        # 3. Verify the signed AAB
+        bundletool validate --bundle=myapp-signed.aab
         ```
-    *   Ferra documentation must guide users through the standard Android signing process, which usually involves configuring signing details in a Gradle build if a Gradle project is used or generated by Ferra for AAB packaging.
+    *   Alternatively, if using Gradle (see §5.4), signing is configured in `build.gradle`:
+        ```groovy
+        android {
+            signingConfigs {
+                release {
+                    storeFile file("my-release-key.keystore")
+                    storePassword "your_keystore_password"
+                    keyAlias "your_key_alias"
+                    keyPassword "your_key_password"
+                }
+            }
+            buildTypes {
+                release {
+                    signingConfig signingConfigs.release
+                }
+            }
+        }
+        ```
+    *   Ferra documentation will guide users through the standard Android signing process, which usually involves configuring signing details in a Gradle build if a Gradle project is used or generated by Ferra for AAB packaging.
 
-### 5.9. Open Questions/TBD (Android AAB)
+## 7. Open Questions and TBDs
 
-*   **(AAB-GRADLE-1)**: **Gradle Integration Strategy**: Final decision on the level of Gradle integration:
-    *   Does Ferra generate a full Gradle project that developers then build?
-    *   Does Ferra tooling invoke `bundletool` directly, requiring less reliance on Gradle from the Ferra user's perspective for pure Ferra apps?
-    *   How does this integrate if the user *already* has an Android Gradle project and wants to add a Ferra native library component?
-*   **(AAB-MANIFEST-1)**: **`AndroidManifest.xml` Management**: Definitive strategy for `AndroidManifest.xml` - fully generated, user-provided, or merged/templated? How are Android permissions (distinct from Ferra `manifest.perms`) handled?
-*   **(AAB-SPLIT-1)**: **Dynamic Feature Module Support**: Initial v0.1 support will focus on the base module. When and how to support packaging Ferra code into dynamic feature modules is future work.
-*   **(AAB-RESOURCES-1)**: Handling of standard Android resources (`res/` drawable, layouts, strings, etc.) if a Ferra project is not primarily using the Ferra UI-DSL (e.g., a Ferra native library for an existing Android app). How are these incorporated if Ferra tooling is driving the AAB creation?
-*   **(AAB-NDK-VER-1)**: Specifying recommended or required Android NDK versions for compatibility.
+### ARM-64 TBDs
+*   **TBD ARM-SPECIFIC-1**: Should Ferra's standard library expose specific ARM NEON SIMD intrinsics for high-performance data-parallel operations, or rely solely on LLVM's auto-vectorizer for `for_each` constructs? This is a performance optimization question that might be addressed in future versions. [RESOLVED for v0.1: Rely on LLVM auto-vectorizer]
+*   **TBD ARM-TARGET-TRIPLES-1**: Final list of officially supported ARM-64 target triples for Linux, macOS, and Windows for v0.1, and the default selection logic. [RESOLVED for v0.1: See Target Triple Reference Table in §3.1]
+*   **TBD ARM-SPECIFIC-INTRINSICS-1**: Strategy for exposing specific ARM-64 intrinsics (e.g., advanced NEON, cryptography extensions) to Ferra code if high-level abstractions or LLVM auto-vectorization are insufficient for certain performance-critical tasks. This is likely future work beyond v0.1.
+*   **TBD ARM-ABI-VARIANTS-1**: Investigation and handling of any subtle C ABI differences or calling convention nuances between the various ARM-64 OS targets (Linux variants, macOS, Windows) that might affect FFI. LLVM typically manages this, but verification is needed.
+*   **TBD ARM-TESTING-HW-1**: Availability of diverse ARM-64 hardware (or accurate emulators) for comprehensive CI testing across different OSes and CPU vendors (e.g., Apple Silicon, Qualcomm Snapdragon, AWS Graviton).
 
-Generating AABs involves interfacing significantly with the Android build ecosystem. The goal for Ferra is to make this as streamlined as possible for developers, especially when also using the Ferra UI-DSL.
+### Apple Bitcode TBDs
+*   **TBD BITCODE-LLVM-VER-1**: Determine the specific range of Apple Clang/LLVM versions that Ferra should target for generating compatible Bitcode for current App Store submission policies. How to handle changes in Apple's required versions.
+*   **TBD BITCODE-MARKERS-1**: Investigate if any special metadata, markers, or specific LLVM IR annotations (beyond standard `-fembed-bitcode`) are needed or beneficial for Apple's Bitcode processing or re-optimization.
+*   **TBD BITCODE-VALIDATION-1**: Tools or processes for validating Ferra-generated Bitcode for App Store compatibility before submission (e.g., using `otool` or other Apple-provided utilities to inspect embedded Bitcode sections).
+*   **TBD BITCODE-FAT-BINARIES-1**: How Bitcode generation interacts with the creation of "fat binaries" or XCFrameworks that might contain slices for multiple Apple platforms (e.g., iOS device, iOS simulator) or architectures.
 
-## 6. Cross-Cutting Concerns
+### Android AAB TBDs
+*   **TBD AAB-GRADLE-1**: Should Ferra's AAB generation use direct `bundletool` invocation or generate a Gradle project? [RESOLVED for v0.1: Generate minimal Gradle project for v0.1, with direct `bundletool` support planned for v0.2]
+*   **TBD AAB-TESTING-1**: Strategy for testing AAB generation and validation in CI, including handling of signing keys and test certificates.
+*   **TBD AAB-FEATURES-1**: Support for advanced AAB features like dynamic feature modules and Play Asset Delivery in future versions.
 
-While each expanded backend target (ARM-64, Apple Bitcode, Android AAB) has its unique considerations, several cross-cutting concerns apply to the overall effort of broadening Ferra's platform support.
+### Toolchain Management TBDs
+*   **TBD EXP-BACKEND-TOOLCHAIN-1**: How should the Ferra build system manage and detect external toolchains (LLVM, Xcode, Android NDK) for these expanded targets? This includes version requirements, fallback mechanisms, and user configuration options. [RESOLVED for v0.1: See §2.2 for toolchain detection flowchart]
+*   **TBD EXP-BACKEND-TOOLCHAIN-2**: Should Ferra provide built-in support for cross-compilation toolchains (e.g., building for Android ARM-64 from a Linux x86-64 host), or leave this to the user to set up? [RESOLVED for v0.1: Leave to user setup]
+*   **TBD EXP-BACKEND-TOOLCHAIN-3**: How should Ferra handle platform-specific build flags and configurations (e.g., iOS deployment target, Android SDK version) in a unified way across different targets? [RESOLVED for v0.1: Via Ferra.toml target sections]
+*   **TBD EXP-BACKEND-TOOLCHAIN-4**: What is the best way to integrate with platform-specific build systems (e.g., Xcode projects, Gradle) for these targets? [RESOLVED for v0.1: See §4.4 and §5.4 for integration approaches]
 
-*   **Error Reporting and Diagnostics**:
-    *   The Ferra compiler must provide clear, target-specific diagnostic messages when errors occur during compilation or packaging for these new backends (e.g., issues with LLVM's ARM-64 codegen, Bitcode incompatibility, AAB packaging failures).
-    *   These diagnostics should adhere to the principles in `DESIGN_DIAGNOSTICS.md`.
-    *   New diagnostic codes might be needed in `diagnostic_codes.md` for target-specific issues.
+## 8. References
 
-*   **Debugging Experience**:
-    *   **ARM-64 Native**: Debugging Ferra code on ARM-64 (Linux, macOS, Windows) should be supported via DWARF and standard debuggers (LLDB, GDB), similar to x86-64.
-    *   **Apple Bitcode**: When Bitcode is recompiled by Apple, the debugging experience relies on Apple's toolchain (Xcode, LLDB) and the dSYMs generated. Ferra's initial DWARF generation must be compatible with this process.
-    *   **Android AAB (Native Libraries)**: Debugging Ferra native code (`.so` files) within an Android app typically involves using Android Studio's native debugging capabilities, which interface with LLDB. Ferra must generate appropriate debug symbols for NDK compatibility.
-    *   Consistent source mapping across all targets is crucial for a good debugging UX.
+### Front-End
+*   `DESIGN_LEXER.md`: Lexer design and implementation
+*   `DESIGN_PARSER.md`: Parser design and implementation
+*   `DESIGN_TYPE_INFERENCE.md`: Type inference system
+*   `DESIGN_DIAGNOSTICS.md`: Diagnostic system design
+*   `FRONTEND_ENHANCEMENTS.md`: Frontend improvements
+*   `AST_SPECIFICATION.md`: Abstract Syntax Tree structure
+*   `SYNTAX_GRAMMAR_V0.1.md`: Language grammar specification
 
-*   **Performance Profiling and Optimization**:
-    *   Once code is running on these new targets, developers will need ways to profile its performance.
-    *   Ferra's own Energy Profiler (`ENERGY_PROFILER.md`) might need target-specific models or considerations for ARM-64.
-    *   Integration with platform-specific profiling tools (e.g., Xcode Instruments for Apple platforms, Android Studio Profiler, Linux `perf` for ARM-64) should be considered and documented.
-    *   Optimization strategies in the Ferra compiler (especially within LLVM IR generation) should be evaluated for their effectiveness on ARM-64, considering differences in CPU architecture (e.g., register counts, instruction pipelines) compared to x86-64.
+### Mid-End
+*   `IR_SPECIFICATION.md`: Intermediate representation specification
+*   `AST_TO_IR_CONVERSION.md`: AST to IR conversion process
+*   `IR_SEMANTIC_TAGS.md`: IR semantic tags
+*   `OWNERSHIP_BORROW_CHECKER.md`: Ownership and borrowing rules
+*   `CONCURRENCY_MODEL.md`: Concurrency and threading model
 
-*   **Build Time**: Supporting multiple complex backends can increase overall compiler build times and testing matrix complexity. Strategies for efficient compilation and testing (e.g., CI caching, selective testing) will be important.
+### Back-End
+*   `BACKEND_LLVM_X86-64.md`: Core LLVM backend design and IR-to-LLVM conversion (see §3.1)
+*   `BACKEND_WASM_WASI.md`: WebAssembly and WASI backend
+*   `DATA_PARALLEL_GPU.md`: Data-parallel programming model and SIMD considerations
+*   `FFI_C_CPP.md`: C ABI and calling conventions (see §2.1)
 
-*   **Documentation**: Comprehensive documentation will be required for developers targeting these platforms, covering:
-    *   Target-specific build configurations in `Ferra.toml`.
-    *   Toolchain setup (Xcode, Android NDK/SDK, ARM-64 cross-compilers).
-    *   Debugging guides.
-    *   Platform-specific FFI or runtime considerations.
-    *   App store submission guidelines (for Bitcode and AABs).
+### Mobile & UI
+*   `UI_DSL_MOBILE.md`: Mobile UI code generation and integration
+*   `UI_DSL_ROADMAP.md`: UI DSL development roadmap
 
-## 7. Future Work
+### Package Management & Security
+*   `PACKAGE_MANAGER_SPEC.md`: Detailed Ferra.toml schema (see §3.2)
+*   `SECURITY_MODEL.md`: Security considerations for mobile platforms
+*   `ENERGY_PROFILER.md`: Energy consumption profiling and optimization
 
-The v0.1 specification for these expanded backends lays the groundwork. Future enhancements could include:
+### Project Infrastructure
+*   `PROJECT_OVERVIEW.md`: Project structure and manifest schema
+*   `PROJECT_DOCS_MAP.md`: Overall documentation structure
+*   `SPEC_OVERVIEW.md`: Specification overview and goals
+*   `CODING_STANDARDS.md`: Code style and quality guidelines
+*   `SOLIDIFICATION_CHECKLIST.md`: Implementation and testing checklist
+*   `SELF_HOSTING_SUBSET.md`: Self-hosting compiler subset
+*   `VSCODE_PLUGIN_ALPHA_SPEC.md`: IDE integration specifications
 
-*   **Broader ARM Architecture Support**:
-    *   Explicit support and optimization for more specific ARM microarchitectures (e.g., different Cortex series, server-grade Neoverse).
-    *   Support for 32-bit ARM targets (`armeabi-v7a` for Android) if strong demand exists, though the industry is heavily shifting to 64-bit.
-*   **Other Native Architectures**: Consideration for other native CPU targets beyond x86-64 and ARM-64 (e.g., RISC-V) as Ferra matures and ecosystem demand grows.
-*   **More Sophisticated Mobile Packaging**:
-    *   Support for Android Dynamic Feature Modules and Play Asset Delivery.
-    *   Deeper integration with Xcode build settings for Apple platforms (e.g., managing entitlements, code signing identities more directly from Ferra tooling if feasible).
-    *   Support for other Apple platforms more explicitly if Bitcode generation proves insufficient (e.g., direct native compilation for macOS ARM-64 without mandatory Bitcode for non-App Store distribution).
-*   **Enhanced Cross-Compilation Support**: More streamlined and automated setup for cross-compilation toolchains and sysroots.
-*   **Performance Parity and Optimization**: Continuous work to ensure Ferra applications perform competitively on these expanded targets compared to other native languages.
-*   **Specialized Standard Library Features**: Platform-specific modules in the standard library that expose unique capabilities of ARM, iOS, or Android in a safe, idiomatic Ferra way.
+### AI Integration
+*   `AI_API_AST.md`: AI API AST integration
+*   `AI_API_REFACTOR_VERIFY.md`: AI API refactoring and verification
 
-## 8. Open Questions / TBD (Overall for Expanded Backends)
-
-This section consolidates the key "To Be Determined" items that apply across the design of these expanded backends. Specific TBDs for each backend are listed in their respective sections (3.6, 4.8, 5.9).
-
-*   **(EXP-BACKEND-RUNTIME-1)**: **Target-Specific Runtime Adjustments**:
-    *   Finalizing any necessary modifications or conditional compilation within Ferra's core runtime (e.g., memory allocator, panic handler, thread primitives if used by stdlib) to ensure correct and optimal behavior on ARM-64 (Linux, macOS, Windows), in Apple Bitcode environments, and within Android AAB/NDK contexts.
-*   **(EXP-BACKEND-CI-1)**: **Comprehensive CI Setup**:
-    *   Detailed plan for CI infrastructure to build, run tests (potentially on emulators or target hardware), and validate artifacts (Bitcode, AABs) for all supported variants of these expanded targets.
-*   **(EXP-BACKEND-TOOLCHAIN-1)**: **Developer Toolchain Management Strategy**:
-    *   How will Ferra guide developers in installing and configuring necessary external toolchains (specific LLVM versions for Bitcode, correct Android NDK/SDK versions, ARM-64 cross-compilers)?
-    *   Will Ferra's build tools attempt to auto-detect or manage any part of these external toolchains?
-*   **(EXP-BACKEND-FFI-TEST-1)**: **FFI Testing on New Targets**:
-    *   A comprehensive FFI testing strategy to ensure C FFI as defined in `FFI_C_CPP.md` works reliably across all new target architecture and OS combinations, particularly regarding calling conventions and data layout.
-*   **(EXP-BACKEND-PERF-BENCH-1)**: **Performance Benchmarking Strategy**:
-    *   Establishing a set of relevant benchmarks and a methodology for comparing Ferra's performance on ARM-64 against x86-64 and potentially other languages on ARM.
-*   **(EXP-BACKEND-DEFAULT-TARGETS-1)**: **Default Build Targets**:
-    *   Defining which of these expanded targets Ferra will build for by default if a developer simply types `lang build` on a given host (e.g., on an ARM-64 macOS host, does it default to native ARM-64, or still x86-64 for wider initial compatibility unless specified?).
-    *   Policy for `lang new` templates regarding default target configurations.
-
-Addressing these overall TBDs, along with the specific ones for each backend, will be crucial for a successful and maintainable implementation of Ferra's expanded platform support.
----
-This document will specify Ferra's approach to supporting ARM-64, Apple Bitcode, and Android App Bundles.
+### Project Planning
+*   `Steps.md`: Project implementation steps and timeline
+*   `comprehensive_plan.md`: Comprehensive project plan

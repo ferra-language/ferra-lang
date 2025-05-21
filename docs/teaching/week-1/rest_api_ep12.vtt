@@ -1,0 +1,26 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Write and run comprehensive test cases.
+
+00:00:05.000 --> 00:00:15.000
+In tests/api_test.lang, add:
+fn test_create_todo() {
+    let response = test_endpoint(
+        "POST",
+        "/todos",
+        json.stringify({"title": "Test Todo"})
+    )
+    assert response.status == 201
+}
+
+fn test_get_todo() {
+    let response = test_endpoint("GET", "/todos/1")
+    assert response.status == 200
+}
+
+fn main() {
+    test_create_todo()
+    test_get_todo()
+    println("All tests passed!")
+} 

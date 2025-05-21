@@ -1,0 +1,70 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:30.000
+Welcome to Ferra! In this 5-minute lab,
+you'll write and run your first Ferra program.
+By the end, you'll have a working 'Hello, Ferra!' program
+and understand the basics of the language.
+
+00:00:30.000 --> 00:01:30.000
+Let's start by installing Ferra.
+Open your terminal and run this command:
+curl -sSL https://get.ferra.dev | sh
+
+This will install the Ferra compiler, package manager,
+and basic development tools.
+
+Let's verify the installation:
+lang --version
+
+Great! Ferra is installed and ready to use.
+
+00:01:30.000 --> 00:02:30.000
+Now, let's create your first Ferra project.
+Run these commands:
+
+lang new hello_ferra
+cd hello_ferra
+
+This creates a new project with all the necessary files.
+The src/main.lang file is where we'll write our code.
+
+00:02:30.000 --> 00:03:30.000
+Let's write our first Ferra program.
+Open src/main.lang and add this code:
+
+fn greet(name: String) -> String {
+    "Hello, " + name + "!"
+}
+
+fn main() {
+    println(greet("Ferra"))
+}
+
+Let's go through what this code does:
+- fn greet declares a function that takes a name and returns a greeting
+- String is the type for text
+- The + operator concatenates strings
+- println prints to the console
+- main is where your program starts
+
+00:03:30.000 --> 00:04:30.000
+Now, let's build and run our program:
+
+lang build
+./hello_ferra
+
+You should see:
+Hello, Ferra!
+
+Perfect! Your first Ferra program is working.
+
+00:04:30.000 --> 00:05:00.000
+Congratulations! You've completed your first Ferra program.
+Here's what you can do next:
+1. Try modifying the greet function
+2. Check out the Week-1 tutorial to build a REST API
+3. Join our community Discord
+4. Read the language reference
+
+Thanks for trying Ferra! Happy coding! 

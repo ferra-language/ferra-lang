@@ -71,6 +71,14 @@ This document provides a centralized list of all key design documents, specifica
 | RFC-002: Core Semantics         | `rfc/RFC-002_CORE_SEMANTICS.md`  | Draft       | (Placeholder for detailed semantics)  |
 | ...                             | ...                                | ...         | ...                                 |
 
+## IV. Teaching Materials
+
+| Document                         | Path                                     | Status (from comprehensive_plan.md) | Notes                                       |
+|----------------------------------|------------------------------------------|-------------------------------------|---------------------------------------------|
+| Teaching Materials Initial    | `TEACHING_MATERIALS_INITIAL.md`    | Module 3.7 - Done (✅)             | Day-0 and Week-1 teaching materials outline. |
+| Teaching - Day-0 Lab         | `teaching/day-0/hello_ferra.md`    | Module 3.7 - Done (✅)             | "Hello, Ferra!" lab with video script.      |
+| Teaching - Week-1 Tutorial   | `teaching/week-1/rest_api.md`      | Module 3.7 - Done (✅)             | REST API tutorial with video episodes.      |
+
 ---
 *Status Notes:*
 *   "Done (✅)": As marked in `comprehensive_plan.md`.

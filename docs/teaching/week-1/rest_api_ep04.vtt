@@ -1,0 +1,17 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Set up the HTTP server and configuration.
+
+00:00:05.000 --> 00:00:15.000
+In src/server/http.lang, add:
+data Config {
+    port: Int = 8080
+    host: String = "localhost"
+}
+
+fn create_server(config: Config) -> http.Server {
+    let server = http.Server::new()
+    server.listen(config.host, config.port)
+    server
+} 

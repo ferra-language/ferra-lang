@@ -1,0 +1,23 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Support updating todos with the PUT endpoint.
+
+00:00:05.000 --> 00:00:15.000
+In src/handlers/todo.lang, add:
+fn update_todo(req: http.Request) -> http.Response {
+    let id = req.params.id.to_int()
+    let body = req.json()
+    match todos.find_index(t => t.id == id) {
+        Some(idx) => {
+            let todo = todos[idx]
+            todo.title = body.title
+            todo.completed = body.completed
+            match todo.validate() {
+                Ok(_) => http.Response::new().json(todo)
+                Err(e) => error_response(400, e)
+            }
+        }
+        None => error_response(404, "Todo not found")
+    }
+} 

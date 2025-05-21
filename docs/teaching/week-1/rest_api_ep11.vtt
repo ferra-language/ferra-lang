@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Write tests for your API endpoints.
+
+00:00:05.000 --> 00:00:15.000
+In tests/api_test.lang, add:
+fn test_endpoint(method: String, path: String, body: String = "") -> http.Response {
+    let client = http.Client::new()
+    match method {
+        "GET" => client.get("http://localhost:8080" + path)
+        "POST" => client.post("http://localhost:8080" + path, body)
+        "PUT" => client.put("http://localhost:8080" + path, body)
+        "DELETE" => client.delete("http://localhost:8080" + path)
+    }
+} 
