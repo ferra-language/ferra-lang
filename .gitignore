@@ -15,4 +15,5 @@ __pycache__/
 /target/
 
 # Other files
-/docs/Other/ 
+/docs/Other/
+.cursor/ 
