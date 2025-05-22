@@ -136,7 +136,7 @@ jobs:
 
 Add this badge to your README.md:
 ```markdown
-[![Multi-Target Build](https://github.com/your-org/ferra/actions/workflows/multi-target.yml/badge.svg)](https://github.com/your-org/ferra/actions/workflows/multi-target.yml)
+[![Multi-Target Build](https://github.com/your-org/ferra-lang/actions/workflows/multi-target.yml/badge.svg)](https://github.com/your-org/ferra-lang/actions/workflows/multi-target.yml)
 ```
 
 *   **Toolchain Requirements and Management (TBD EXP-BACKEND-TOOLCHAIN-1)**:

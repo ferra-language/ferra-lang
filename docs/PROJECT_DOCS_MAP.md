@@ -63,13 +63,17 @@ This document provides a centralized list of all key design documents, specifica
 
 ## III. RFCs (Requests for Comments)
 
-*(This section will list formal RFC documents as they are created. Example format below.)*
-
 | RFC Number & Title              | Path                               | Status      | Notes                               |
 |---------------------------------|------------------------------------|-------------|-------------------------------------|
 | RFC-001: Syntax & Grammar       | `rfc/RFC-001_SYNTAX_GRAMMAR.md`    | Accepted    | Detailed syntax proposal (Phase 0). |
-| RFC-002: Core Semantics         | `rfc/RFC-002_CORE_SEMANTICS.md`  | Draft       | (Placeholder for detailed semantics)  |
-| ...                             | ...                                | ...         | ...                                 |
+| RFC-002: Core Semantics         | `rfc/RFC-002_CORE_SEMANTICS.md`    | Draft       | Core language semantics and types.  |
+| RFC-003: Ownership Model        | `rfc/RFC-003_OWNERSHIP_MODEL.md`   | Draft       | Ownership and borrowing system.     |
+| RFC-004: Concurrency Model      | `rfc/RFC-004_CONCURRENCY_MODEL.md` | Draft       | Deterministic actors and async.     |
+| RFC-005: FFI Design            | `rfc/RFC-005_FFI_DESIGN.md`        | Draft       | Foreign function interface.         |
+| RFC-006: Package Manager       | `rfc/RFC-006_PACKAGE_MANAGER.md`   | Draft       | Content-addressed package system.   |
+| RFC-007: UI-DSL                | `rfc/RFC-007_UI_DSL.md`            | Draft       | UI domain-specific language.        |
+| RFC-008: AI APIs               | `rfc/RFC-008_AI_APIS.md`           | Draft       | AI integration and tooling.         |
+| RFC-009: Security Model        | `rfc/RFC-009_SECURITY_MODEL.md`    | Draft       | Capability-based security.          |
 
 ## IV. Teaching Materials
 

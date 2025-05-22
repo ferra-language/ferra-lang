@@ -1,30 +1,68 @@
-# Ferra Grammar v0.1 (draft)
-
-This document defines the initial version (v0.1) of the Ferra programming language syntax using Extended Backus-Naur Form (EBNF).
-
-## 0. Notation & Goals
-
-*   EBNF syntax (as defined below), targeting Unicode code-points for terminals where applicable.
-*   The grammar aims to be suitable for a parser leveraging Pratt parsing for expressions.
-*   A GLR (or similar) parsing strategy may be employed as a fallback or for specific ambiguous constructs, particularly concerning optional significant indentation.
-
-**EBNF Conventions Used:**
-
-*   `::=`        : Definition
-*   `|`          : Alternative
-*   `?`          : Optional (zero or one occurrence) (*Note: also used as `[]` in the user suggestion, I will stick to `?` or `[...]` consistently*)
-*   `*`          : Zero or more occurrences
-*   `+`          : One or more occurrences
-*   `()`         : Grouping
-*   `"terminal"` : Literal terminal symbols (keywords, operators, punctuation)
-*   `UPPERCASE_NAME` : Abstract terminal symbols (e.g., IDENTIFIER, INTEGER_LITERAL, typically defined by lexer rules).
-*   `(* ... *)`  : EBNF-style comments (not part of Ferra syntax).
-
-Whitespace (spaces, tabs) is generally insignificant unless part of significant indentation (covered later) or within string literals. Newlines often terminate statements or are significant in certain contexts.
-
+---
+number: RFC-001
+title: "Syntax and Grammar Design"
+status: Draft
+version: v0.3
+authors: ["Amrit Doll <amritdoll@example.com>"]
+last_reviewed: 2025-05-21
+last_updated: 2025-05-21
 ---
 
-## 1. Lexical Structure
+# RFC-001: Syntax and Grammar Design
+
+## Table of Contents
+1. [Summary](#1-summary)
+2. [Motivation](#2-motivation)
+3. [Impact](#3-impact)
+   1. [Developer Experience](#31-developer-experience)
+   2. [Ecosystem](#32-ecosystem)
+   3. [Performance](#33-performance)
+4. [Design Decisions](#4-design-decisions)
+   1. [Lexical Structure](#41-lexical-structure)
+   2. [Declarations](#42-declarations)
+   3. [Types](#43-types)
+   4. [Expressions](#44-expressions)
+   5. [Statements](#45-statements)
+   6. [Module & Macro Forms](#46-module--macro-forms)
+5. [Drawbacks](#5-drawbacks)
+6. [Security & Privacy](#6-security--privacy)
+7. [Implementation Plan](#7-implementation-plan)
+8. [Migration Strategy](#8-migration-strategy)
+9. [Unresolved Questions](#9-unresolved-questions)
+10. [Future Possibilities](#10-future-possibilities)
+11. [References](#11-references)
+
+## 1. Summary
+This RFC specifies the initial version (v0.1) of the Ferra programming language syntax using Extended Backus-Naur Form (EBNF). The grammar is designed to be suitable for a parser leveraging Pratt parsing for expressions, with GLR as a fallback for ambiguous constructs.
+
+## 2. Motivation
+Ferra's syntax aims to:
+- Provide a clean, intuitive syntax that balances Python-like readability with Rust-like explicitness
+- Support both brace-based and indentation-based block structures
+- Enable efficient parsing through Pratt parsing for expressions
+- Maintain Unicode support for identifiers
+- Offer flexible statement termination through newlines and optional semicolons
+
+## 3. Impact
+### 3.1 Developer Experience
+- Familiar syntax for Python and Rust developers
+- Flexible block structure (braces or indentation)
+- Clear operator precedence and associativity
+- Comprehensive error messages for syntax errors
+
+### 3.2 Ecosystem
+- Standardized syntax across the ecosystem
+- Consistent code formatting rules
+- Clear guidelines for syntax extensions
+
+### 3.3 Performance
+- Efficient parsing through Pratt parsing
+- Minimal lexer complexity
+- Fast syntax error recovery
+
+## 4. Design Decisions
+
+### 4.1 Lexical Structure
 
   (* This section details the low-level lexical elements of Ferra. These are typically processed by a lexer (tokenizer) before the parser constructs the Abstract Syntax Tree. *)
 
@@ -267,39 +305,44 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
                       (*| ... other punctuation/operators ... *)
           ```
 
----
-
-## 2. Declarations
+### 4.2 Declarations
 
   2.1 Variable Declaration
       ```ebnf
-      VariableDecl ::= ("let" | "var") IDENTIFIER ( ":" Type )? "=" Expression ";"? (* Semicolon optional? TBD with statement termination rules*)
-      (* Example: let pi: Float = 3.14159 *)
-      (* Example: var count: Int = 0 *)
+      VariableDecl ::= AttributeListOpt ("let" | "var") IDENTIFIER ( ":" Type )? "=" Expression ";"?
+      (* Example: #[derive(Debug)] let pi: Float = 3.14159 *)
       ```
 
   2.2 Function Declaration
       ```ebnf
-      FunctionDecl ::= ("async")? "fn" IDENTIFIER ParameterList ( "->" Type )? Block
-      (* Example: async fn fetch(url: String) -> Result<Response> { ... } *)
-      (* TODO: Generics, where-clauses *)
+      FunctionDecl ::= AttributeListOpt ("pub")? ("async")? "fn" IDENTIFIER ParameterList ( "->" Type )? Block
+      (* Example: #[inline] pub async fn fetch(url: String) -> Result<Response> { ... } *)
 
       ParameterList ::= "(" (Parameter ("," Parameter)*)? ")"
-      Parameter       ::= IDENTIFIER ":" Type
+      Parameter     ::= IDENTIFIER ":" Type
       ```
 
   2.3 Data Class Declaration
       ```ebnf
-      DataClassDecl ::= "data" IDENTIFIER "{" FieldList? "}"
-      (* Example: data User { id: Int, name: String, email: String } *)
+      DataClassDecl ::= AttributeListOpt "data" IDENTIFIER "{" FieldList? "}"
+      (* Example: #[derive(Clone, Debug)] data User { id: Int, name: String, email: String } *)
 
       FieldList     ::= Field ("," Field)* (",")?
       Field         ::= IDENTIFIER ":" Type
       ```
 
----
+  2.4 Extern Block Declaration
+      ```ebnf
+      ExternBlock ::= AttributeListOpt "extern" AbiStringLiteral "{" ExternalItem* "}"
+      (* Example: extern "C" { fn printf(format: *const u8, ...) -> i32; } *)
 
-## 3. Types
+      ExternalItem ::= ExternFunctionDecl | ExternVariableDecl
+      ExternFunctionDecl ::= "fn" IDENTIFIER ParameterList ( "->" Type )? ";"
+      ExternVariableDecl ::= ("static" | "const")? IDENTIFIER ":" Type ";"
+      AbiStringLiteral ::= StringLiteral (* e.g., "C", "C++", "Rust" *)
+      ```
+
+### 4.3 Types
 
   (*
     This section defines the syntax for type expressions in Ferra.
@@ -313,6 +356,8 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
   Type ::= TupleType
          | ArrayType
          | FunctionType
+         | ExternFunctionType  (* Added *)
+         | RawPointerType      (* Added *)
          | GenericType
          | QualifiedIdentifier
          | IDENTIFIER                (* Simple type name, e.g. Int, Float, String, User *)
@@ -336,17 +381,31 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
 
   QualifiedIdentifier ::= IDENTIFIER ("::" IDENTIFIER)+
                   (* Represents a namespaced type, e.g., `http::Client`. *)
+
+  RawPointerType ::= "*" ("const" | "mut") Type
+                  (* Example: *const u8, *mut i32 *)
+
+  ExternFunctionType ::= "extern" AbiStringLiteral "fn" "(" ParameterTypeList? ")" ("->" Type)?
+                      (* Example: extern "C" fn(i32, i32) -> i32 *)
   ```
 
----
-
-## 4. Expressions (Pratt-style precedence table)
+### 4.4 Expressions
   (*
     Ferra will use a Pratt parser (top-down operator-precedence parser) for expressions.
     This allows for intuitive handling of operator precedence and associativity.
     The actual EBNF rules for binary and unary operations are kept abstract here,
     as the Pratt parser's logic, guided by a precedence table (see Appendix A),
     will determine how these are constructed.
+
+    Note: The GLR fallback is triggered only for specific ambiguous constructs:
+    1. Nested generic type arguments vs. comparison operators:
+       `a < b > c` (comparison chain) vs. `a<b<c>>` (nested generic)
+    2. Macro delimiters vs. array indexing:
+       `foo![x]` (macro) vs. `foo[x]` (index)
+    3. Function call vs. generic instantiation:
+       `foo(x)` (call) vs. `foo<x>` (generic)
+    The parser will use GLR to explore both interpretations and choose the most likely one
+    based on context and type information.
   *)
   ```ebnf
   Expression ::= Literal
@@ -361,7 +420,10 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
                | BinaryOpExpr
                | GroupedExpr
                | IfExpression    (* `if` can be an expression *)
-               (* | ArrayLiteral, TupleLiteral, MapLiteral ... *)
+               | ArrayLiteral    (* Added *)
+               | TupleLiteral    (* Added *)
+               | StringInterpolation (* Added *)
+               (* | MapLiteral ... *)
                (* | LambdaExpr ... *)
                (* | ... other expression forms ... *)
 
@@ -390,6 +452,13 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
                  (* `else` branch is mandatory for `if` in an expression context.
                     The parser might use the same AST node for IfStatement and IfExpression,
                     with a flag indicating its context or by type-checking requirements. *)
+
+  ArrayLiteral ::= "[" (Expression ("," Expression)*)? "]"
+  TupleLiteral ::= "(" Expression ("," Expression)* (",")? ")"
+  
+  StringInterpolation ::= '"' (StringContent | Interpolation)* '"'
+  StringContent ::= ~['"' '{' '}'] | EscapeSequence
+  Interpolation ::= "{" Expression "}"
   ```
   (*
     Note on Assignments: While assignment operators (`=`, `+=`, etc.) are listed
@@ -417,9 +486,7 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
                          | IDENTIFIER (* Shorthand for IDENTIFIER : IDENTIFIER *)
       ```
 
----
-
-## 5. Statements
+### 4.5 Statements
   (*
     Statements are the primary units of execution. Ferra uses a newline-sensitive termination
     approach, augmented by optional semicolons and context-aware rules for block endings.
@@ -507,69 +574,264 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
   let result = if explicit_brace_sum(10) > 20 { "big" } else { "small" }
   ```
 
----
+### 4.6 Module & Macro Forms
+```ebnf
+ModuleDecl ::= AttributeListOpt "mod" IDENTIFIER Block
+             | AttributeListOpt "mod" IDENTIFIER ";"
+(* Example: mod math { ... } or mod math; *)
 
-## 6. Module & Macro Forms
-  (* TODO *)
+ImportDecl ::= "import" ImportPath ("as" IDENTIFIER)?
+             | "import" "{" ImportPath ("as" IDENTIFIER)? ("," ImportPath ("as" IDENTIFIER)?)* "}"
+(* Example: import std::io or import { read, write as write_bytes } *)
+
+ImportPath ::= IDENTIFIER ("::" IDENTIFIER)*
+
+MacroInvocation ::= IDENTIFIER "!" MacroDelimiter MacroContents MacroDelimiter
+MacroDelimiter  ::= "(" | "[" | "{"
+MacroContents   ::= MacroToken*
+MacroToken      ::= IDENTIFIER | LITERAL | PUNCTUATION | MacroInvocation
+
+MacroDefinition ::= "macro" IDENTIFIER MacroPattern "=>" MacroBody
+MacroPattern    ::= "(" MacroPatternToken* ")"
+MacroPatternToken ::= IDENTIFIER | LITERAL | PUNCTUATION | "$" IDENTIFIER ":" MacroFragmentSpecifier
+MacroFragmentSpecifier ::= "ident" | "expr" | "stmt" | "block" | "item" | "ty" | "path"
+MacroBody       ::= "{" MacroBodyToken* "}"
+MacroBodyToken  ::= IDENTIFIER | LITERAL | PUNCTUATION | "$" IDENTIFIER
+
+(* Example: println!("Hello, {}!", name) *)
+(* Example: macro_rules! vec { ($($x:expr),*) => { ... } } *)
+```
+
+#### 4.6 Statement Terminators and Semicolons
+The language supports both explicit and implicit statement termination:
+
+```ebnf
+# Statement termination rules
+StatementTerminator = ";" | Newline
+Newline = "\n" | "\r\n"
+
+# Semicolon insertion rules
+# 1. Required after statements that don't end in a block
+# 2. Optional after block-terminated statements
+# 3. Required in for-loop headers
+# 4. Required in struct/enum declarations
+```
+
+Examples:
+```ferra
+// Explicit semicolons
+let x = 5;  // Required
+fn foo() {  // Optional after block
+    return 42
+}
+
+// Implicit termination
+let y = 10  // Newline terminates
+if x > 0 {  // Block terminates
+    println(x)
+}
+```
+
+#### 4.7 Macro System
+The macro system provides compile-time code generation and metaprogramming:
+
   ```ebnf
-  (* ImportDeclaration ::= "import" ... *)
-  MacroInvocation   ::= IDENTIFIER "!" (* Actual syntax TBD, e.g., parentheses, braces, specific delimiter *)
-                      (* Example: json! { ... } -- The content of { ... } depends on the macro definition *) 
-  ```
+# Macro syntax
+MacroInvocation = IDENTIFIER "!" [ "(" Expr* ")" ] | "[" Expr* "]"
+MacroDefinition = "macro" IDENTIFIER "(" MacroParam* ")" "->" Block
+MacroParam = IDENTIFIER [ ":" Type ] [ "=" Expr ]
 
----
+# Common macro patterns
+DeriveMacro = "#[derive(" IDENTIFIER ("," IDENTIFIER)* ")]"
+AttributeMacro = "#[" IDENTIFIER [ "(" Expr* ")" ] "]"
+```
 
-## Appendix A. Operator Precedence Table (Informative for Pratt Parser)
+Examples:
+```ferra
+// Derive macro
+#[derive(Debug, Clone)]
+data Point { x: Int, y: Int }
 
-  This table guides the Pratt parser. Operators with higher precedence levels bind more tightly.
+// Attribute macro
+#[test]
+fn test_addition() {
+    assert_eq!(2 + 2, 4)
+}
 
-  | Level | Associativity | Operator Category      | Operators                                                        | Ferra Example (Conceptual)                |
-  | :---- | :------------ | :--------------------- | :--------------------------------------------------------------- | :---------------------------------------- |
-  | 15    | Postfix       | Error Propagation      | `?`                                                              | `might_fail()?`                           |
-  | 14    | Left          | Member/Call/Index      | `.` (field/method access), `()` (function call) (*`[]` index TBD*) | `obj.field`, `func(x)`, `arr[0]`           |
-  | 13    | Right         | Unary Prefix           | `!` (logical NOT), `-` (negation), `+` (unary plus)              | `!is_valid`, `-total`, `+offset`          |
-  | 12    | Left          | Multiplicative         | `*`, `/`, `%`                                                    | `a * b`, `c / d`, `e % f`                 |
-  | 11    | Left          | Additive               | `+`, `-`                                                         | `a + b`, `c - d`                          |
-  | 10    | Left          | Bitwise Shift          | `<<`, `>>`                                                       | `bits << 2`, `value >> 1`                 |
-  | 9     | Left          | Bitwise AND, XOR, OR   | `&` (AND), `^` (XOR), `                                          | ` (OR)` (Bitwise) | `x & mask`, `y ^ key`, `z              | flags` | 
-  | 8     | N/A           | Range                  | `..` (exclusive), `..=` (inclusive)                              | `0..10`, `start..=end`                    |
-  | 7     | None          | Relational/Comparison  | `==`, `!=`, `<`, `<=`, `>`, `>=`                                    | `a == b`, `c < d`                         |
-  | 6     | Left          | Logical AND            | `&&` (primary), `and` (lexer alias)                              | `cond1 && cond2`, `is_ok and has_data`    |
-  | 5     | Left          | Logical OR             | `                                                                |                                           | ` (primary), `or` (lexer alias)                                  | `opt1 `                                   | ` opt2`, `err1 or err2`                 |
-  | 4     | Right         | Nil-Coalescing         | `??`                                                             | `optional_value ?? default`               |
-  | 3     | N/A           | (Reserved for Pipeline)| (* `                                                            | >` - Not included in v0.1 *)             |                                           |
-  | 2     | Right         | Assignment             | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`  | `x = 1`, `y += 2`                         |
-  | 1     | N/A           | (Separator/Lowest)     | (* `,` - Primarily a separator, not an infix expr operator *)    |                                           |
+// Function-like macro
+println!("Hello, {}!", name)
 
-  (*
-    Notes on the table:
-    - `()` for function calls and `.` for member access are typically handled specially by the Pratt parser's prefix/infix dispatch.
-    - Array indexing `[]` would also fit in level 14 if added.
-    - Unary `+` is included for completeness.
-    - Comparison operators are non-associative, meaning `a < b < c` is not implicitly `(a < b) < c` or `a < (b < c)`. If chained comparisons are desired, they need specific grammar rules.
-    - The comma `,` is generally a separator in argument lists, parameter lists, array literals, etc., rather than a binary operator in the expression sense (like in C).
-  *)
+// Custom macro
+macro repeat(n: Int, body: Block) -> Block {
+    // Implementation
+}
+```
 
----
+## 5. Drawbacks
+- Complexity in handling both brace and indentation-based blocks
+- Potential ambiguity in statement termination
+- Learning curve for developers unfamiliar with Pratt parsing
+- Maintenance overhead for syntax extensions
+- String interpolation complexity in lexer/parser
+- Array/tuple literal parsing edge cases
 
-## Appendix B. Open Questions / TBD
+Example error cases:
+```ferra
+// Mixed tab/space indentation (E003)
+fn example():
+    let x = 1
+		let y = 2  // Error: Inconsistent indentation
 
-*   Exact rules for semicolon insertion / optional semicolons (*Now drafted in Sec 1.1 and Sec 5*).
-    *   Refine parser logic for `NEWLINE_AS_TERMINATOR` determination.
-    *   Edge cases with postfix operators (e.g., `?`, `.await`) followed by newline, then a new statement that could ambiguously start an expression (e.g. if it starts with `(` or `{`).
-*   Detailed syntax for all literal types (integers with base prefixes, float notations, string escape sequences, char literals, boolean literals) (*Largely addressed in 1.3.3*).
-*   Syntax for generics (parameters, arguments, where clauses) on functions and data structures.
-*   Error propagation syntax beyond `Result<T>` (e.g., `?` operator details if adopted from Rust) (*`?` as postfix op added to precedence table*).
-*   Module system details (imports, exports, visibility).
-*   Full macro definition and invocation syntax.
-*   Rules for significant indentation if adopted (how INDENT/DEDENT tokens are generated or handled) (*Strategy defined for lexer emitting INDENT/DEDENT; Block can be BraceBlock or IndentedBlock. Hygiene rules defined in Sec 1.1.*).
-*   Interaction of `async`/`await` with expression types (e.g. `await` as a postfix operator or keyword) (*`.await` handled as postfix in expressions*).
-*   Compile-time JSON macro specifics.
-*   Array/List/Map literal syntax.
-*   Tuple syntax (*Type syntax for Tuples and dynamic Arrays/Lists now drafted in Sec 3*).
-*   Control-flow statements (`if/else`, `while`, `for`, `return`, `break`, `continue`) (*Initial EBNF drafted in Sec 4 & 5*).
-*   Parser rules for chained comparisons (e.g., `a < b < c`).
-*   RFC #???: Fixed-size arrays (e.g., `[T; N]`) & pointer/reference types (e.g., `*T`, `&T`).
-*   RFC #???: Loop labels & `break value` semantics.
-*   RFC #???: Formatter canonical style toggle (e.g. `--indent-blocks` flag).
-*   Precise EBNF for single-statement shortcuts after control keywords (e.g., `if cond print("hi")`).
+// Malformed string interpolation (E007)
+let name = "Alice"
+let msg = "Hello ${name"  // Error: Unterminated interpolation
+
+// Invalid array literal (E005)
+let arr = [1, 2, 3,  // Error: Missing closing bracket
+```
+
+## 6. Security & Privacy
+- Syntax design enables clear security boundaries
+- No implicit type conversions
+- Explicit error handling through `?` operator
+- Clear visibility modifiers (to be defined in future RFCs)
+- String interpolation prevents injection attacks
+- Strict parsing rules prevent ambiguous constructs
+
+### 6.3 Sandboxing
+- Linux: seccomp-bpf filters
+- Windows: AppContainer
+- MacOS: Seatbelt/Profile extensions
+- WebAssembly: WASI capabilities
+
+## 7. Implementation Plan
+- **Phase 1 (Q3 2025)**: Core Lexer & Parser
+  - Implement Ragel-generated DFA lexer for efficient tokenization
+  - Implement recursive-descent parser for declarations and statements
+  - Implement Pratt parser for expressions with operator precedence
+  - Add GLR fallback for ambiguous constructs (nested generics, macro delimiters)
+  - Test harness for syntax validation
+  - String interpolation lexer states
+  - Array/tuple literal parsing
+
+- **Phase 2 (Q4 2025)**: Enhanced Features
+  - Implement significant indentation
+  - Add macro system
+  - Enhance error recovery
+  - Performance optimization
+  - String interpolation parser
+  - Literal parsing optimizations
+
+## 8. Migration Strategy
+- New language; no migration needed
+- Clear documentation and examples
+- IDE support for syntax highlighting and formatting
+- String interpolation migration guide
+- Array/tuple literal examples
+
+## 9. Unresolved Questions
+### High Priority
+- SYNTAX-SEMICOLON-1: Final rules for semicolon insertion
+- SYNTAX-INDENT-1: Edge cases in significant indentation
+- SYNTAX-MACRO-1: Detailed macro syntax
+- SYNTAX-GENERIC-1: Generic syntax details
+- SYNTAX-STRING-1: String interpolation edge cases
+- SYNTAX-LITERAL-1: Array/tuple literal edge cases
+- SYNTAX-EXTERN-1: ABI string literal validation
+- SYNTAX-POINTER-1: Pointer type safety rules
+
+### Medium Priority
+- SYNTAX-IMPORT-1: Module system details
+- SYNTAX-COMPARE-1: Chained comparison rules
+- SYNTAX-FORMAT-1: Formatter style options
+- SYNTAX-INTERP-1: String interpolation performance
+- SYNTAX-RAW-1: Raw string literal syntax
+- SYNTAX-SHEBANG-1: Shebang line handling
+- SYNTAX-GLR-1: GLR fallback implementation details
+
+### Low Priority
+- SYNTAX-LABEL-1: Loop labels and break value
+- SYNTAX-ARRAY-1: Fixed-size array syntax
+- SYNTAX-PTR-1: Pointer/reference types
+- SYNTAX-SHORTCUT-1: Single-statement shortcuts
+- SYNTAX-ATTR-1: Custom attribute syntax
+- SYNTAX-DOC-1: Documentation comment syntax
+
+## 10. Future Possibilities
+- Pipeline operator (`|>`)
+- Pattern matching enhancements
+- Type-level programming features
+- Advanced macro system
+- Custom operators
+- Syntax extensions for domain-specific features
+- Raw string literals
+- Multi-line string literals
+- String interpolation enhancements
+- Reference types (`&T`, `&mut T`) for ownership model
+- Type aliases with reference syntax
+- Const generics and associated types
+
+## 11. References
+1. [Syntax Grammar Specification](../SYNTAX_GRAMMAR_V0.1.md#43-types) - Core type system
+2. [Design Lexer](../DESIGN_LEXER.md#token-definitions) - Token definitions
+3. [Design Parser](../DESIGN_PARSER.md#pratt-parser) - Expression parsing
+4. [Core Semantics](../CORE_SEMANTICS_V0.1.md#type-system) - Type system details
+5. [Design Type Inference](../DESIGN_TYPE_INFERENCE.md#bidirectional) - Type inference
+6. [Design Diagnostics](../DESIGN_DIAGNOSTICS.md#syntax-errors) - Error handling
+7. [RFC-002: Core Semantics](./RFC-002_CORE_SEMANTICS.md) - Language semantics
+8. [RFC-003: Ownership Model](./RFC-003_OWNERSHIP_MODEL.md) - Memory model
+
+## Appendix A. Operator Precedence Table
+| Level | Associativity | Operator Category      | Operators                                                        | Example                |
+|-------|---------------|------------------------|------------------------------------------------------------------|------------------------|
+| 15    | Postfix       | Error Propagation      | `?`                                                              | `might_fail()?`        |
+| 14    | Left          | Member/Call/Index      | `.` (field/method), `()` (call)                                  | `obj.field`, `func(x)` |
+| 13    | Right         | Unary Prefix           | `!`, `-`, `+`                                                    | `!is_valid`, `-total`  |
+| 12    | Left          | Multiplicative         | `*`, `/`, `%`                                                    | `a * b`, `c / d`       |
+| 11    | Left          | Additive               | `+`, `-`                                                         | `a + b`, `c - d`       |
+| 10    | Left          | Bitwise Shift          | `<<`, `>>`                                                       | `bits << 2`            |
+| 9     | Left          | Bitwise AND/XOR/OR     | `&`, `^`, `\|`                                                   | `x & mask`, `y ^ key`  |
+| 8     | N/A           | Range                  | `..`, `..=`                                                      | `0..10`, `start..=end` |
+| 7     | None          | Comparison             | `==`, `!=`, `<`, `<=`, `>`, `>=`                                | `a == b`, `c < d`      |
+| 6     | Left          | Logical AND            | `&&`, `and`                                                      | `cond1 && cond2`       |
+| 5     | Left          | Logical OR             | `\|\|`, `or`                                                     | `opt1 \|\| opt2`       |
+| 4     | Right         | Nil-Coalescing         | `??`                                                             | `opt ?? default`       |
+| 3     | N/A           | (Reserved)             | (* Pipeline operator - future *)                                 |                        |
+| 2     | Right         | Assignment             | `=`, `+=`, `-=`, etc.                                           | `x = 1`, `y += 2`      |
+| 1     | N/A           | Separator              | `,`                                                              |                        |
+
+## Appendix B. Error Codes
+| Code | Description | Severity | Recovery |
+|------|-------------|----------|-----------|
+| E001 | Unexpected token | Error | Skip to next statement |
+| E002 | Unterminated string | Error | Skip to next quote |
+| E003 | Invalid indentation | Error | Skip to next block |
+| E004 | Missing closing brace | Error | Skip to next block |
+| E005 | Invalid array literal | Error | Skip to next bracket |
+| E006 | Invalid tuple literal | Error | Skip to next parenthesis |
+| E007 | Invalid string interpolation | Error | Skip to next brace |
+| E008 | Invalid operator | Error | Skip to next token |
+| E009 | Invalid identifier | Error | Skip to next token |
+| E010 | Invalid numeric literal | Error | Skip to next token |
+
+## Appendix C. Lexer State Machine
+```mermaid
+stateDiagram-v2
+    [*] --> Start
+    Start --> String: "
+    String --> String: ~["{]
+    String --> Interpolation: {
+    Interpolation --> String: }
+    String --> [*]: "
+    Interpolation --> Interpolation: ~[}]
+```
+
+## Appendix D. Parser State Transitions
+```mermaid
+stateDiagram-v2
+    [*] --> Statement
+    Statement --> Expression
+    Expression --> Term
+    Term --> Factor
+    Factor --> [*]
+```
