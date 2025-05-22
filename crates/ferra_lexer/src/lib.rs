@@ -25,61 +25,61 @@ pub enum TokenKind {
     StringLiteral,
     CharacterLiteral,
     BooleanLiteral,
-    ByteLiteral,        // e.g. b'a', b"foo"
+    ByteLiteral, // e.g. b'a', b"foo"
 
     // Comments (skipped by parser but useful for tooling)
-    LineComment,       // `// ...`
-    BlockComment,      // `/* ... */`
+    LineComment,  // `// ...`
+    BlockComment, // `/* ... */`
 
     // Operators & Punctuation
-    Plus,           // +
-    Minus,          // -
-    Star,           // *
-    Slash,          // /
-    Percent,        // %
-    EqualEqual,     // ==
-    NotEqual,       // !=
-    Less,           // <
-    Greater,        // >
-    LessEqual,      // <=
-    GreaterEqual,   // >=
-    LogicalAnd,     // &&
-    LogicalOr,      // ||
-    BitAnd,         // &
-    BitOr,          // |
-    Caret,          // ^
-    ShiftLeft,      // <<
-    ShiftRight,     // >>
-    Coalesce,       // ??
-    Equal,          // =
-    PlusEqual,      // +=
-    MinusEqual,     // -=
-    StarEqual,      // *=
-    SlashEqual,     // /=
-    PercentEqual,   // %=
-    BitAndEqual,    // &=
-    BitOrEqual,     // |=
-    CaretEqual,     // ^=
-    ShiftLeftEqual, // <<=
-    ShiftRightEqual,// >>=    
-    Bang,           // !
-    Question,       // ?
-    Dot,            // .
-    Comma,          // ,
-    Colon,          // :
-    Semicolon,      // ;
-    LParen,         // (
-    RParen,         // )
-    LBrace,         // {
-    RBrace,         // }
-    LBracket,       // [
-    RBracket,       // ]
-    Arrow,          // ->
-    FatArrow,       // =>
-    DotDot,         // ..
-    DotDotEqual,    // ..=
-    PathSep,        // ::
-    Underscore,     // _
+    Plus,            // +
+    Minus,           // -
+    Star,            // *
+    Slash,           // /
+    Percent,         // %
+    EqualEqual,      // ==
+    NotEqual,        // !=
+    Less,            // <
+    Greater,         // >
+    LessEqual,       // <=
+    GreaterEqual,    // >=
+    LogicalAnd,      // &&
+    LogicalOr,       // ||
+    BitAnd,          // &
+    BitOr,           // |
+    Caret,           // ^
+    ShiftLeft,       // <<
+    ShiftRight,      // >>
+    Coalesce,        // ??
+    Equal,           // =
+    PlusEqual,       // +=
+    MinusEqual,      // -=
+    StarEqual,       // *=
+    SlashEqual,      // /=
+    PercentEqual,    // %=
+    BitAndEqual,     // &=
+    BitOrEqual,      // |=
+    CaretEqual,      // ^=
+    ShiftLeftEqual,  // <<=
+    ShiftRightEqual, // >>=
+    Bang,            // !
+    Question,        // ?
+    Dot,             // .
+    Comma,           // ,
+    Colon,           // :
+    Semicolon,       // ;
+    LParen,          // (
+    RParen,          // )
+    LBrace,          // {
+    RBrace,          // }
+    LBracket,        // [
+    RBracket,        // ]
+    Arrow,           // ->
+    FatArrow,        // =>
+    DotDot,          // ..
+    DotDotEqual,     // ..=
+    PathSep,         // ::
+    Underscore,      // _
 
     // Structural tokens
     Indent,
@@ -125,7 +125,7 @@ pub struct Span {
 /// A single position: line, column, and byte offset.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Position {
-    pub line:   usize,
+    pub line: usize,
     pub column: usize,
     pub offset: usize,
 }
@@ -134,8 +134,16 @@ impl Span {
     /// Dummy span for early‐stage tests; replace with real tracking later.
     pub fn dummy() -> Self {
         Span {
-            start: Position { line: 0, column: 0, offset: 0 },
-            end:   Position { line: 0, column: 0, offset: 0 },
+            start: Position {
+                line: 0,
+                column: 0,
+                offset: 0,
+            },
+            end: Position {
+                line: 0,
+                column: 0,
+                offset: 0,
+            },
         }
     }
 }
@@ -153,7 +161,7 @@ impl Token {
 }
 
 /// Stub lexer: for now it only emits an EOF token.
-/// We'll flesh this out to recognize keywords, identifiers, and all other tokens next. 
+/// We'll flesh this out to recognize keywords, identifiers, and all other tokens next.
 pub fn lex(_source: &str) -> Vec<Token> {
     vec![Token::eof_dummy()]
 }
