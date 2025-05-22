@@ -1,15 +1,44 @@
-name: Ferra CI
+name: CI
 
 on:
   push:
-    branches: [ "main" ] # Or your primary branch
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ] # Or your primary branch
-
-env:
-  CARGO_TERM_COLOR: always
+    branches: [ main ]
 
 jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+      - run: cargo fmt -- --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+      - run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo test --workspace
+
   build_and_test:
     name: Build & Test
     runs-on: ubuntu-latest
