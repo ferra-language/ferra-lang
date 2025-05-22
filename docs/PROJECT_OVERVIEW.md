@@ -4,7 +4,7 @@
 
 *   **Repository Type**: Git
 *   **Hosting Platform**: GitHub
-*   **Repository URL**: [https://github.com/Starr2591/ferra-lang.git](https://github.com/Starr2591/ferra-lang.git)
+*   **Repository URL**: [https://github.com/ferra-language/ferra-lang.git](https://github.com/ferra-language/ferra-lang.git)
 *   **Access**: (Please specify access control details if any, e.g., public, private, contribution guidelines link).
 
 ## Project Vision
@@ -16,6 +16,6 @@ This project follows the technical direction outlined in `Steps.md` and the deta
 ## Project Management
 
 *   **Issue Tracker**: GitHub Issues
-    *   **Location**: Integrated within the project's GitHub repository: [https://github.com/Starr2591/ferra-lang/issues](https://github.com/Starr2591/ferra-lang/issues)
+    *   **Location**: Integrated within the project's GitHub repository: [https://github.com/ferra-language/ferra-lang/issues](https://github.com/ferra-language/ferra-lang/issues)
     *   **Usage**: Used for tracking tasks, features, bugs, design discussions, and progress against the `comprehensive_plan.md`.
     *   **Key Features to Utilize**: Labels, milestones, assignees, and GitHub Projects (Kanban boards) for visual workflow management. 

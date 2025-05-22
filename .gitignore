@@ -12,4 +12,7 @@ node_modules/
 *.pyc
 __pycache__/
 .env
-/target/ 
+/target/
+
+# Other files
+/docs/Other/ 

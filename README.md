@@ -6,9 +6,9 @@ Ferra is an AI-native, general-purpose programming language designed to be as ea
 
 ## Repository
 
-- **GitHub:** [https://github.com/Starr2591/ferra-lang.git](https://github.com/Starr2591/ferra-lang.git)
+- **GitHub:** [https://github.com/ferra-language/ferra-lang.git](https://github.com/ferra-language/ferra-lang.git)
 - **Version Control:** Git
-- **Issue Tracker:** [GitHub Issues](https://github.com/Starr2591/ferra-lang/issues)
+- **Issue Tracker:** [GitHub Issues](https://github.com/ferra-language/ferra-lang/issues)
 
 ## Project Vision
 
@@ -16,14 +16,36 @@ Ferra aims to make high-performance, safe, and modern programming accessible to 
 
 ## Project Structure
 
-See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for a full breakdown. Key directories:
+```
+ferra-lang/
+├── Cargo.toml              # Workspace root config
+├── Cargo.lock              # Lockfile (auto-generated)
+├── rust-toolchain.toml     # Rust toolchain pinning
+├── README.md               # Project overview
+├── CONTRIBUTING.md         # Contribution guide
+├── CODING_STANDARDS.md     # Coding standards
+├── lang-spec-v4.yaml       # Language spec (YAML)
+├── .gitignore              # Git ignore rules
+├── .github/                # GitHub config, CI, and templates
+│   ├── workflows/          # GitHub Actions workflows (ci.yml)
+│   ├── ISSUE_TEMPLATE/     # Issue templates (bug, feature)
+│   └── PULL_REQUEST_TEMPLATE.md # PR template
+├── crates/                 # Rust workspace subcrates
+│   └── ferra_lexer/        # Example: lexer crate
+│       ├── Cargo.toml
+│       └── src/
+│           └── lib.rs
+├── docs/                   # All design docs, specs, and plans
+│   ├── PROJECT_STRUCTURE.md
+│   ├── ... (other docs)
+│   └── Other/
+└── target/                 # Build artifacts (ignored in VCS)
+```
 
-- `compiler/` — Main compiler implementation
-- `stdlib/` — Standard library
-- `tools/` — CLI tools (compiler driver, package manager)
-- `tests/` — Integration tests
-- `examples/` — Example programs
-- `docs/` — All design docs, specs, and plans
+- All new code should go in subcrates under `crates/`.
+- CI is configured via `.github/workflows/ci.yml`.
+- Issues and PRs use templates in `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md`.
+- All documentation/specs live in `docs/`.
 
 ## Documentation
 
@@ -38,11 +60,17 @@ See [docs/PROJECT_DOCS_MAP.md](docs/PROJECT_DOCS_MAP.md) for a full list of spec
 
 ## Getting Started
 
-```bash
-git clone https://github.com/Starr2591/ferra-lang.git
-cd ferra-lang
-# See docs/ for build and usage instructions
-```
+> **Note:** This repository uses **`main`** as its default branch.
+
+1. Fork this repo on GitHub.
+2. Clone your fork (replace `<YOUR_GITHUB_USERNAME>` with the name you see in your browser's address bar after forking):
+   ```bash
+   git clone git@github.com:<YOUR_GITHUB_USERNAME>/ferra-lang.git
+   cd ferra-lang
+   ```
+
+> 🔧 _Tip:_  
+> After you run the above, `git remote -v` should show your fork's URL.
 
 ## Teaching & Tutorials
 
@@ -51,7 +79,7 @@ cd ferra-lang
 
 ## Contributing
 
-- See [CONTRIBUTING.md](CONTRIBUTING.md) (if available) and [GitHub Issues](https://github.com/Starr2591/ferra-lang/issues)
+- See [CONTRIBUTING.md](CONTRIBUTING.md) and [GitHub Issues](https://github.com/ferra-language/ferra-lang/issues)
 - Contributions, bug reports, and feedback are welcome!
 
 ---

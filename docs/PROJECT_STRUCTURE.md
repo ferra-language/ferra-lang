@@ -2,35 +2,44 @@
 
 ## Directory Structure
 ```
-ferra/
-├── compiler/                 # Main compiler implementation
-│   ├── frontend/            # Frontend components
-│   │   ├── src/
-│   │   │   ├── lexer/      # Lexical analysis
-│   │   │   ├── parser/     # Syntax analysis
-│   │   │   └── type_inference/ # Type checking
-│   │   └── tests/          # Frontend tests
-│   ├── midend/             # Middle-end components
-│   │   ├── src/
-│   │   │   ├── ir/        # SSA IR implementation
-│   │   │   └── semantic_tags/ # AI semantic tags
-│   │   └── tests/
-│   ├── backend/            # Backend components
-│   │   ├── src/
-│   │   │   └── llvm/      # LLVM code generation
-│   │   └── tests/
-│   └── diagnostics/        # Error handling
-├── stdlib/                 # Standard library
-│   ├── src/
-│   │   ├── io/           # I/O operations
-│   │   └── collections/  # Data structures
-│   └── tests/
-├── tools/                  # Command-line tools
-│   ├── langc/            # Compiler driver
-│   └── lang/             # Package manager
-├── tests/                 # Integration tests
-└── examples/             # Example programs
+ferra-lang/
+├── Cargo.toml              # Workspace root config
+├── Cargo.lock              # Lockfile (auto-generated)
+├── rust-toolchain.toml     # Rust toolchain pinning
+├── README.md               # Project overview
+├── CONTRIBUTING.md         # Contribution guide
+├── CODING_STANDARDS.md     # Coding standards
+├── lang-spec-v4.yaml       # Language spec (YAML)
+├── .gitignore              # Git ignore rules
+├── .github/                # GitHub config, CI, and templates
+│   ├── workflows/          # GitHub Actions workflows (ci.yml)
+│   ├── ISSUE_TEMPLATE/     # Issue templates (bug, feature)
+│   └── PULL_REQUEST_TEMPLATE.md # PR template
+├── crates/                 # Rust workspace subcrates
+│   └── ferra_lexer/        # Example: lexer crate
+│       ├── Cargo.toml
+│       └── src/
+│           └── lib.rs
+├── docs/                   # All design docs, specs, and plans
+│   ├── PROJECT_STRUCTURE.md
+│   ├── ... (other docs)
+│   └── Other/
+└── target/                 # Build artifacts (ignored in VCS)
 ```
+
+- **Cargo.toml**: Workspace root, lists all crates in `crates/`.
+- **crates/**: Each subcrate (e.g., `ferra_lexer`) is a Rust library or binary, with its own `Cargo.toml` and `src/`.
+- **.github/**: Contains CI workflows, issue templates, and PR template.
+- **docs/**: All project documentation, specs, and design docs.
+- **target/**: Build output (should be gitignored).
+- **rust-toolchain.toml**: Pins Rust toolchain and components (rustfmt, clippy).
+- **README.md, CONTRIBUTING.md, CODING_STANDARDS.md**: Top-level project info and guidelines.
+
+## Notes
+- All new code should go in subcrates under `crates/`.
+- CI is configured via `.github/workflows/ci.yml`.
+- Issues and PRs use templates in `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md`.
+- All documentation/specs live in `docs/`.
 
 ## Implementation Status
 

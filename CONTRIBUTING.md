@@ -1,23 +1,21 @@
 # Contributing to Ferra
 
+> **Default branch:** This repo uses **`main`**.  
+> When you fork or clone, Git will check out `main`—there is no `master` branch.
+
 Thank you for your interest in contributing to Ferra! This guide will walk you through the process of setting up your environment, following our conventions, and submitting your changes.
 
 ---
 
 ## 1. Setup
 
-1. **Fork & Clone**  
-   Clone your fork of the repo using SSH or HTTPS:
+1. Fork the upstream repo on GitHub.
+2. Clone your fork (replace `<YOUR_GITHUB_USERNAME>` with the name you see in your browser's address bar after forking):
    ```bash
-   # SSH
-   git clone git@github.com:Starr2591/ferra-lang.git
-
-   # or HTTPS
-   git clone https://github.com/Starr2591/ferra-lang.git
-
+   git clone git@github.com:<YOUR_GITHUB_USERNAME>/ferra-lang.git
    cd ferra-lang
    ```
-2. **Install Rust Toolchain**  
+3. Install Rust Toolchain  
    We lock to the stable toolchain via `rust-toolchain.toml`.
    ```bash
    rustup update
@@ -109,6 +107,3 @@ Refer to these whenever you file something so that all the necessary fields are 
 ---
 
 Thank you for helping make Ferra better! 🎉
-
----
-For more, see the [README](README.md) and the `docs/` directory. 

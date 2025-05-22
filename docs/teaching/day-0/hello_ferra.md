@@ -115,4 +115,4 @@ If you run into any problems:
 - [Ferra Documentation](https://docs.ferra.dev)
 - [Language Reference](../../reference/README.md)
 - [Community Discord](https://discord.gg/ferra)
-- [GitHub Repository](https://github.com/Starr2591/ferra-lang) 
+- [GitHub Repository](https://github.com/ferra-language/ferra-lang) 
