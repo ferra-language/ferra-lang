@@ -1,5 +1,7 @@
 # Ferra
 
+[Contributing](CONTRIBUTING.md)
+
 Ferra is an AI-native, general-purpose programming language designed to be as easy as Python, with Rust-class performance and memory safety. It features minimal syntax, gradual static typing, an ownership/borrow model, deterministic async/actor concurrency, and positive-first error messaging.
 
 ## Repository
@@ -30,7 +32,7 @@ See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for a full breakdown.
 - [Comprehensive Plan](docs/comprehensive_plan.md)
 - [Docs Map](docs/PROJECT_DOCS_MAP.md)
 - [Language Spec](lang-spec-v4.yaml)
-- [Coding Standards](docs/CODING_STANDARDS.md)
+- [Coding Standards](CODING_STANDARDS.md)
 
 See [docs/PROJECT_DOCS_MAP.md](docs/PROJECT_DOCS_MAP.md) for a full list of specs, RFCs, and teaching materials.
 
