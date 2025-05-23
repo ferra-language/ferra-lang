@@ -1,0 +1,56 @@
+use ferra_lexer::{Lexer, TokenKind};
+
+#[test]
+fn multi_char_operators() {
+    let tokens = Lexer::new("a == b != c <= d >= e && f || g += h -= i *= j /= k %= l &= m |= n ^= o <<= p >>= q -> r => s .. t ..= u :: v ?? w").lex();
+    let expected = vec![
+        TokenKind::Identifier,
+        TokenKind::EqualEqual,
+        TokenKind::Identifier,
+        TokenKind::NotEqual,
+        TokenKind::Identifier,
+        TokenKind::LessEqual,
+        TokenKind::Identifier,
+        TokenKind::GreaterEqual,
+        TokenKind::Identifier,
+        TokenKind::LogicalAnd,
+        TokenKind::Identifier,
+        TokenKind::LogicalOr,
+        TokenKind::Identifier,
+        TokenKind::PlusEqual,
+        TokenKind::Identifier,
+        TokenKind::MinusEqual,
+        TokenKind::Identifier,
+        TokenKind::StarEqual,
+        TokenKind::Identifier,
+        TokenKind::SlashEqual,
+        TokenKind::Identifier,
+        TokenKind::PercentEqual,
+        TokenKind::Identifier,
+        TokenKind::BitAndEqual,
+        TokenKind::Identifier,
+        TokenKind::BitOrEqual,
+        TokenKind::Identifier,
+        TokenKind::CaretEqual,
+        TokenKind::Identifier,
+        TokenKind::ShiftLeftEqual,
+        TokenKind::Identifier,
+        TokenKind::ShiftRightEqual,
+        TokenKind::Identifier,
+        TokenKind::Arrow,
+        TokenKind::Identifier,
+        TokenKind::FatArrow,
+        TokenKind::Identifier,
+        TokenKind::DotDot,
+        TokenKind::Identifier,
+        TokenKind::DotDotEqual,
+        TokenKind::Identifier,
+        TokenKind::PathSep,
+        TokenKind::Identifier,
+        TokenKind::Coalesce,
+        TokenKind::Identifier,
+        TokenKind::Eof,
+    ];
+    let kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
+    assert_eq!(kinds, expected.iter().collect::<Vec<_>>());
+}
