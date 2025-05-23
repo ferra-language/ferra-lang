@@ -3,7 +3,7 @@ use ferra_lexer::{Lexer, TokenKind};
 #[test]
 fn multi_char_operators() {
     let tokens = Lexer::new("a == b != c <= d >= e && f || g += h -= i *= j /= k %= l &= m |= n ^= o <<= p >>= q -> r => s .. t ..= u :: v ?? w").lex();
-    let expected = vec![
+    let expected = [
         TokenKind::Identifier,
         TokenKind::EqualEqual,
         TokenKind::Identifier,
@@ -51,6 +51,6 @@ fn multi_char_operators() {
         TokenKind::Identifier,
         TokenKind::Eof,
     ];
-    let kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
-    assert_eq!(kinds, expected.iter().collect::<Vec<_>>());
+    let kinds: Vec<TokenKind> = tokens.iter().map(|t| t.kind.clone()).collect();
+    assert_eq!(kinds, expected);
 }

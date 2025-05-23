@@ -20,6 +20,7 @@ fn float_literals() {
 }
 
 #[test]
+#[allow(clippy::approx_constant)]
 fn integration_float_literals() {
     let tokens =
         Lexer::new("x = 3.14; y = 2.0e10; z = 1_000.5; a = 42; b = 1.0e-3; c = 7.; d = 0.5;").lex();
