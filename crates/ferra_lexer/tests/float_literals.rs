@@ -77,3 +77,11 @@ fn integration_float_literals() {
         .unwrap();
     assert_eq!(float_token.literal, Some(LiteralValue::Float(3.14)));
 }
+
+#[test]
+#[allow(clippy::approx_constant)]
+fn float_with_underscore_in_exponent() {
+    let tokens = Lexer::new("1.2e-3_4").lex();
+    assert_eq!(tokens[0].kind, TokenKind::FloatLiteral);
+    assert_eq!(tokens[0].literal, Some(LiteralValue::Float(1.2e-34)));
+}

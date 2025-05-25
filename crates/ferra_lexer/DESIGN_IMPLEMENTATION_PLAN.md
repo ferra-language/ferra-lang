@@ -93,6 +93,9 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 - [ ] Lexer benchmarks
 - [ ] Error recovery strategies
 - [ ] (Future) Hexadecimal/binary float literal syntax
+- [ ] Unicode escapes (\u{...}) in string and char literals (TODO: not yet implemented or tested)
+- [ ] Raw string literal support (TODO: not yet implemented or tested)
+- [x] Float literal with underscore in exponent (test implemented and passing)
 
 ---
 
