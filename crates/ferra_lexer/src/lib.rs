@@ -177,6 +177,15 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
+        // Shebang handling: if input starts with "#!", skip the first line
+        let input = if input.starts_with("#!") {
+            match input.find('\n') {
+                Some(idx) => &input[idx + 1..],
+                None => "", // shebang is the whole file
+            }
+        } else {
+            input
+        };
         Lexer {
             input,
             chars: input.char_indices().peekable(),

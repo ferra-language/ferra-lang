@@ -28,3 +28,21 @@ fn test_unrecognized_character() {
     assert_eq!(tokens[0].lexeme, "$".to_string());
     assert_eq!(tokens[1].kind, TokenKind::Eof);
 }
+
+#[test]
+fn test_shebang_skipped() {
+    let src = "#! /usr/bin/env ferra\nlet x = 42;";
+    let tokens = ferra_lexer::Lexer::new(src).lex();
+    let kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
+    assert_eq!(
+        kinds,
+        vec![
+            &ferra_lexer::TokenKind::Let,
+            &ferra_lexer::TokenKind::Identifier,
+            &ferra_lexer::TokenKind::Equal,
+            &ferra_lexer::TokenKind::IntegerLiteral,
+            &ferra_lexer::TokenKind::Semicolon,
+            &ferra_lexer::TokenKind::Eof,
+        ]
+    );
+}

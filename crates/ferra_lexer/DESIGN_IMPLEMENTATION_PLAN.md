@@ -19,7 +19,7 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 - [x] Indentation tokens (`Indent`, `Dedent`, `Newline`) (Python-style)
 - [x] Error token for unrecognized input (robust)
 - [ ] **Ragel integration:** Define `.rl` state-machine spec and integrate generated Rust code (future)
-- [ ] **Shebang handling:** Treat a `#!...` shebang at the very start of a file as a single-line comment (skipped)
+- [x] **Shebang handling:** Treat a `#!...` shebang at the very start of a file as a single-line comment (skipped)
 
 ## 2. Lexing Logic
 - [x] Main lexing loop (cursor/iterator)
@@ -38,6 +38,7 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 - [x] **Numeric underscores:** Strip and ignore `_` in integer literals (all bases)
 - [x] **Lexer aliases:** Rewrite `and` → `LogicalAnd`, `or` → `LogicalOr` after keyword recognition
 - [x] **Skip NEWLINE/indent for blank/comment-only lines**
+- [x] **Shebang handling:** Skip shebang line if present at file start
 
 ## 3. Unicode & Normalization
 - [x] Unicode ID_Start/ID_Continue for identifiers (via unicode-ident)
@@ -61,13 +62,29 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 - [x] Unit tests in `src/lib.rs` for basic cases
 - [x] Unit tests in `src/lib.rs` for each token type and edge case
 - [x] Integration tests in `tests/` directory:
-    - [x] Full-file lexing scenarios
-    - [x] Error cases and recovery
-    - [x] Indentation/whitespace scenarios
-    - [x] Unicode identifier tests
-    - [x] Comment and doc extraction
-- [x] Fuzz tests (property-based, for robustness)
+    - [x] Full-file lexing scenarios (`tests/general_lexing.rs`, `tests/unit_basic.rs`)
+    - [x] Error cases and recovery (`tests/char_literals.rs`, `tests/string_literals.rs`, `tests/comments.rs`, `tests/numeric_literals.rs`)
+    - [x] Indentation/whitespace scenarios (`tests/unit_basic.rs`)
+    - [x] Unicode identifier tests (`tests/keywords_identifiers.rs`)
+    - [x] Comment and doc extraction (`tests/comments.rs`)
+    - [x] Operator and punctuation tests (`tests/operators_punctuation.rs`, `tests/multi_char_ops.rs`)
+    - [x] Float literal tests (`tests/float_literals.rs`)
+    - [x] Shebang handling (`tests/general_lexing.rs`)
+- [x] Fuzz tests (property-based, for robustness) (`tests/fuzz.rs`)
 - [x] **Test multi-line tokens:** Ensure correct start/end positions for multi-line tokens (block comments, raw strings, etc.)
+
+**Test files:**
+- `tests/char_literals.rs`
+- `tests/string_literals.rs`
+- `tests/comments.rs`
+- `tests/numeric_literals.rs`
+- `tests/keywords_identifiers.rs`
+- `tests/operators_punctuation.rs`
+- `tests/multi_char_ops.rs`
+- `tests/float_literals.rs`
+- `tests/unit_basic.rs`
+- `tests/general_lexing.rs`
+- `tests/fuzz.rs`
 
 **All tests are comprehensive, covering all error and edge cases, and a property-based fuzz test ensures the lexer never panics.**
 
