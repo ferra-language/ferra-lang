@@ -16,6 +16,7 @@ fn test_simple_integer() {
     assert_eq!(tokens[0].span.end.offset, 3);
 }
 
+#[allow(clippy::approx_constant)]
 #[test]
 fn test_float_simple() {
     let tokens = lex_all("3.14");
