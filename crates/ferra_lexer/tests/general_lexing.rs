@@ -1,0 +1,28 @@
+use ferra_lexer::*;
+
+// Helper function to lex the entire input string
+fn lex_all(input: &str) -> Vec<Token> {
+    Lexer::new(input).lex()
+}
+
+#[test]
+fn test_empty_input() {
+    assert_eq!(lex_all(""), vec![Token::eof_dummy()]);
+}
+
+#[test]
+fn test_whitespace_only() {
+    let tokens = lex_all("   \t\n  ");
+    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens[0].kind, TokenKind::Newline);
+    assert_eq!(tokens[1].kind, TokenKind::Eof);
+}
+
+#[test]
+fn test_unrecognized_character() {
+    let tokens = lex_all("$");
+    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens[0].kind, TokenKind::Error);
+    assert_eq!(tokens[0].lexeme, "$".to_string());
+    assert_eq!(tokens[1].kind, TokenKind::Eof);
+}

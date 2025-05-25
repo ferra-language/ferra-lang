@@ -9,10 +9,10 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 - [x] Identifiers (ASCII only, not Unicode yet)
 - [x] Integer literals (decimal only)
 - [x] Float literals (with exponents, underscores)
-- [ ] String literals (escapes, Unicode)
-- [ ] Character literals (escapes, Unicode)
-- [ ] Boolean literals (`true`, `false`)
-- [ ] Byte literals (`b'a'`, `b"foo"`)
+- [x] String literals (basic escapes: \\n, \\t, \\\\, \\", no Unicode \\u{...} yet)
+- [x] Character literals (basic escapes: \'\', \\\\, \\n, \\r, \\t, \\0, no Unicode \\u{...} yet)
+- [x] Boolean literals (`true`, `false`) (lexed as keywords with LiteralValue::Boolean)
+- [ ] Byte literals (`b\'a\'`, `b\"foo\"`)
 - [x] Some single-char operators & punctuation (`=`, `;`, `+`, `-`, `*`, `/`, `,`, `:`, `(`, `)`, `{`, `}`)
 - [x] All operators & punctuation (multi-char, rest of single-char)
 - [ ] Comments (`// ...`, `/* ... */` with nesting)
@@ -27,7 +27,9 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 - [x] Identifier/keyword recognition
 - [x] Number literal recognition (int, decimal only)
 - [ ] Number literal recognition (float, hex, octal, binary)
-- [ ] String/char/byte literal recognition
+- [x] String literal recognition (basic escapes)
+- [x] Character literal recognition (basic escapes, error handling for empty/multi/unterminated/invalid-escape)
+- [ ] Byte literal recognition
 - [ ] Operator and punctuation recognition (maximal munch, multi-char)
 - [ ] Indentation stack logic for `Indent`/`Dedent`
 - [ ] Newline handling
@@ -43,8 +45,12 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 - [ ] NFC normalization for identifier lexemes
 
 ## 4. Error Handling
-- [ ] Invalid character reporting
-- [ ] Unterminated string/char/block comment
+- [x] Invalid character reporting
+- [x] Unterminated string literal
+- [x] Unterminated character literal
+- [x] Invalid escape sequence in char literal
+- [x] Empty/Multi-character char literal errors
+- [ ] Unterminated block comment 
 - [ ] Invalid numeric formats
 - [ ] Indentation errors (mixed tabs/spaces, dedent to unknown level)
 - [ ] Positive-first error messaging
