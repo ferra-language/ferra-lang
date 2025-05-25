@@ -77,7 +77,9 @@ fn test_char_literal_empty() {
     assert_eq!(tokens[0].lexeme, "''");
     assert_eq!(
         tokens[0].literal,
-        Some(LiteralValue::String("Empty character literal".to_string()))
+        Some(LiteralValue::String(
+            "Empty character literal (in character literal)".to_string()
+        ))
     );
 }
 
@@ -95,7 +97,7 @@ fn test_char_literal_multiple_chars() {
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String(
-            "Multi-character literal or unterminated".to_string()
+            "Multi-character literal or unterminated (in character literal)".to_string()
         ))
     );
 }
@@ -109,7 +111,7 @@ fn test_char_literal_unterminated_eof_after_opening() {
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String(
-            "Unterminated character literal (EOF)".to_string()
+            "Unterminated character literal (EOF) (in character literal)".to_string()
         ))
     );
 }
@@ -123,7 +125,8 @@ fn test_char_literal_unterminated_eof_after_char() {
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String(
-            "Unterminated character literal (EOF before closing quote)".to_string()
+            "Unterminated character literal (EOF before closing quote) (in character literal)"
+                .to_string()
         ))
     );
 }
@@ -137,7 +140,7 @@ fn test_char_literal_unterminated_eof_after_backslash() {
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String(
-            "Unterminated character literal after backslash".to_string()
+            "Unterminated character literal after backslash (in character literal)".to_string()
         ))
     );
 }
@@ -149,17 +152,11 @@ fn test_char_literal_unterminated_by_newline() {
     assert!(tokens.len() >= 2);
     assert_eq!(tokens[0].kind, TokenKind::Error);
     assert_eq!(tokens[0].lexeme, "'a"); // Consumes 'a, stops at \n
-                                        // Accept either error message, as both are reasonable for this case
-    let msg = tokens[0].literal.as_ref().unwrap();
-    let msg_str = match msg {
-        LiteralValue::String(s) => s,
-        _ => panic!("Expected error message as String"),
-    };
-    assert!(
-        msg_str == "Multi-character literal or unterminated"
-            || msg_str == "Unterminated character literal",
-        "Unexpected error message: {}",
-        msg_str
+    assert_eq!(
+        tokens[0].literal,
+        Some(LiteralValue::String(
+            "Multi-character literal or unterminated (in character literal)".to_string()
+        ))
     );
     // Optionally, check that the last token is EOF
     assert_eq!(tokens.last().unwrap().kind, TokenKind::Eof);
@@ -175,7 +172,7 @@ fn test_char_literal_invalid_escape() {
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String(
-            "Invalid escape sequence in char literal: \\q".to_string()
+            "Invalid escape sequence in char literal: \\q (in character literal)".to_string()
         ))
     );
     // The next token should be the stray single quote

@@ -5,3 +5,8 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
+unicode-ident = "1.0.18"
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+proptest = "1.4"

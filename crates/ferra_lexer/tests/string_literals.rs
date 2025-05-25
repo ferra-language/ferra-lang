@@ -58,7 +58,8 @@ fn test_string_literal_unterminated_eof() {
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String(
-            "Unterminated string literal".to_string()
+            "Unterminated string literal: expected closing quote \" before end of line or file."
+                .to_string()
         ))
     );
     assert_eq!(tokens[0].span.start.offset, 0);
@@ -75,7 +76,8 @@ fn test_string_literal_unterminated_with_backslash_at_eof() {
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String(
-            "Unterminated string literal".to_string()
+            "Unterminated string literal: expected closing quote \" before end of line or file."
+                .to_string()
         ))
     );
     assert_eq!(tokens[0].span.start.offset, 0);
@@ -100,7 +102,8 @@ fn test_string_literal_unterminated_by_newline() {
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String(
-            "Unterminated string literal".to_string()
+            "Unterminated string literal: expected closing quote \" before end of line or file."
+                .to_string()
         ))
     );
     assert_eq!(tokens[0].span.start.offset, 0);
@@ -116,9 +119,7 @@ fn test_string_literal_invalid_escape_sequence() {
     assert_eq!(tokens[0].lexeme, input[..10].to_string()); // "invalid\q
     assert_eq!(
         tokens[0].literal,
-        Some(LiteralValue::String(
-            "Invalid escape sequence in string literal: \\q".to_string()
-        ))
+        Some(LiteralValue::String("Invalid escape sequence in string literal: \\q. Only valid escapes are \\n, \\t, \\\\, \\\" and Unicode escapes.".to_string()))
     );
     assert_eq!(tokens[1].kind, TokenKind::Identifier);
     assert_eq!(tokens[1].lexeme, "escape");

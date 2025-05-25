@@ -3,6 +3,8 @@
 
 use std::iter::Peekable;
 use std::str::CharIndices;
+use unicode_ident::{is_xid_continue, is_xid_start};
+use unicode_normalization::UnicodeNormalization;
 
 /// All the different token kinds the Ferra lexer can emit.
 /// Marked non_exhaustive so we can add new variants (raw strings, etc.) later.
@@ -168,6 +170,9 @@ pub struct Lexer<'a> {
     chars: Peekable<CharIndices<'a>>,
     line: usize,
     column: usize,
+    indent_stack: Vec<usize>, // track indentation levels
+    pending_dedents: usize,   // track dedents to emit
+    at_line_start: bool,      // are we at the start of a new line?
 }
 
 impl<'a> Lexer<'a> {
@@ -177,12 +182,145 @@ impl<'a> Lexer<'a> {
             chars: input.char_indices().peekable(),
             line: 1,
             column: 1,
+            indent_stack: vec![0],
+            pending_dedents: 0,
+            at_line_start: true,
         }
     }
 
     pub fn lex(mut self) -> Vec<Token> {
         let mut tokens = Vec::new();
         while let Some(&(idx, ch)) = self.chars.peek() {
+            // Handle dedents first
+            if self.pending_dedents > 0 {
+                self.pending_dedents -= 1;
+                tokens.push(Token {
+                    kind: TokenKind::Dedent,
+                    lexeme: String::new(),
+                    literal: None,
+                    span: Span {
+                        start: Position {
+                            line: self.line,
+                            column: self.column,
+                            offset: idx,
+                        },
+                        end: Position {
+                            line: self.line,
+                            column: self.column,
+                            offset: idx,
+                        },
+                    },
+                });
+                continue;
+            }
+            // Indentation logic at start of line
+            if self.at_line_start {
+                let mut col = 0;
+                let mut off = idx;
+                let mut chars_clone = self.chars.clone();
+                while let Some(&(i, c)) = chars_clone.peek() {
+                    if c == ' ' {
+                        col += 1;
+                        off = i + 1;
+                        chars_clone.next();
+                    } else if c == '\t' {
+                        col += 4; // treat tab as 4 spaces
+                        off = i + 1;
+                        chars_clone.next();
+                    } else {
+                        break;
+                    }
+                }
+                if let Some(&(_, c)) = chars_clone.peek() {
+                    if c == '\n' {
+                        // blank line, just emit Newline
+                        self.chars = chars_clone;
+                        self.at_line_start = true;
+                        let start_offset = idx;
+                        let start_col = self.column;
+                        self.advance_char();
+                        tokens.push(Token {
+                            kind: TokenKind::Newline,
+                            lexeme: "\n".to_string(),
+                            literal: None,
+                            span: Span {
+                                start: Position {
+                                    line: self.line - 1,
+                                    column: start_col,
+                                    offset: start_offset,
+                                },
+                                end: Position {
+                                    line: self.line - 1,
+                                    column: start_col + 1,
+                                    offset: start_offset + 1,
+                                },
+                            },
+                        });
+                        continue;
+                    }
+                }
+                let current_indent = *self.indent_stack.last().unwrap();
+                if col > current_indent {
+                    self.indent_stack.push(col);
+                    tokens.push(Token {
+                        kind: TokenKind::Indent,
+                        lexeme: String::new(),
+                        literal: None,
+                        span: Span {
+                            start: Position {
+                                line: self.line,
+                                column: 1,
+                                offset: idx,
+                            },
+                            end: Position {
+                                line: self.line,
+                                column: col + 1,
+                                offset: off,
+                            },
+                        },
+                    });
+                } else if col < current_indent {
+                    while col < *self.indent_stack.last().unwrap() {
+                        self.indent_stack.pop();
+                        self.pending_dedents += 1;
+                    }
+                    continue;
+                }
+                // Advance chars to after leading whitespace
+                while self
+                    .chars
+                    .peek()
+                    .is_some_and(|&(_, c)| c == ' ' || c == '\t')
+                {
+                    self.advance_char();
+                }
+                self.at_line_start = false;
+            }
+            // Handle Newlines
+            if ch == '\n' {
+                let start_offset = idx;
+                let start_col = self.column;
+                self.advance_char();
+                tokens.push(Token {
+                    kind: TokenKind::Newline,
+                    lexeme: "\n".to_string(),
+                    literal: None,
+                    span: Span {
+                        start: Position {
+                            line: self.line - 1,
+                            column: start_col,
+                            offset: start_offset,
+                        },
+                        end: Position {
+                            line: self.line - 1,
+                            column: start_col + 1,
+                            offset: start_offset + 1,
+                        },
+                    },
+                });
+                self.at_line_start = true;
+                continue;
+            }
             if ch.is_ascii_digit()
                 || (ch == '.'
                     && self
@@ -207,38 +345,58 @@ impl<'a> Lexer<'a> {
                     }
                     continue;
                 } else if self.peek_nth_char(1).is_some_and(|(_, c)| c == '*') {
-                    // Block comment (no nesting)
+                    // Block comment (with nesting support)
+                    let comment_start_line = self.line;
+                    let comment_start_col = self.column;
+                    let comment_start_offset = idx;
+
                     self.advance_char(); // consume '/'
-                    self.advance_char(); // consume '*'
+                    self.advance_char(); // consume '*
+
+                    let mut nesting_level = 1;
                     let mut closed = false;
+
                     while let Some(&(_i, c1)) = self.chars.peek() {
-                        self.advance_char();
-                        if c1 == '*' {
+                        self.advance_char(); // Consume current char
+                        if c1 == '/' {
+                            if let Some(&(_j, c2)) = self.chars.peek() {
+                                if c2 == '*' {
+                                    // Start of a nested block comment
+                                    self.advance_char(); // Consume '*
+                                    nesting_level += 1;
+                                }
+                            }
+                        } else if c1 == '*' {
                             if let Some(&(_j, c2)) = self.chars.peek() {
                                 if c2 == '/' {
-                                    self.advance_char(); // consume '/'
-                                    closed = true;
-                                    break;
+                                    // End of a block comment
+                                    self.advance_char(); // Consume '/'
+                                    nesting_level -= 1;
+                                    if nesting_level == 0 {
+                                        closed = true;
+                                        break;
+                                    }
                                 }
                             }
                         }
                     }
+
                     if !closed {
                         tokens.push(Token {
                             kind: TokenKind::Error,
-                            lexeme: self.input[idx..].to_string(),
+                            lexeme: self.input.get(comment_start_offset..self.current_offset()).unwrap_or("").to_string(),
                             literal: Some(LiteralValue::String(
-                                "Unterminated block comment".to_string(),
+                                "Unterminated block comment: expected closing */ before end of file.".to_string(),
                             )),
                             span: Span {
                                 start: Position {
-                                    line: self.line,
-                                    column: self.column,
-                                    offset: idx,
+                                    line: comment_start_line,
+                                    column: comment_start_col,
+                                    offset: comment_start_offset,
                                 },
                                 end: Position {
-                                    line: self.line,
-                                    column: self.column,
+                                    line: self.line,     // Current line at EOF or error point
+                                    column: self.column, // Current column at EOF or error point
                                     offset: self.current_offset(),
                                 },
                             },
@@ -248,30 +406,6 @@ impl<'a> Lexer<'a> {
                 }
             }
 
-            // Handle Newlines
-            if ch == '\n' {
-                let start_offset = idx;
-                let start_col = self.column;
-                self.advance_char(); // Consumes the newline, updates line and column
-                tokens.push(Token {
-                    kind: TokenKind::Newline,
-                    lexeme: "\n".to_string(),
-                    literal: None,
-                    span: Span {
-                        start: Position {
-                            line: self.line - 1, // Line before advancing
-                            column: start_col,
-                            offset: start_offset,
-                        },
-                        end: Position {
-                            line: self.line - 1,   // Line before advancing
-                            column: start_col + 1, // Newline takes one char column conceptually before reset
-                            offset: start_offset + 1,
-                        },
-                    },
-                });
-                continue;
-            }
             // Skip other whitespace
             if ch.is_whitespace() {
                 // but not newline, handled above
@@ -346,23 +480,112 @@ impl<'a> Lexer<'a> {
                 }
             }
 
-            // Identifiers and keywords: [a-zA-Z_][a-zA-Z0-9_]*
-            if ch.is_ascii_alphabetic() || ch == '_' {
+            // Byte literals: b'a' or b"foo"
+            if ch == 'b' {
+                if let Some(&(_, next_ch)) = self.peek_nth_char(1).as_ref() {
+                    if next_ch == '\'' || next_ch == '"' {
+                        let start_offset = idx;
+                        let start_line = self.line;
+                        let start_col = self.column;
+                        self.advance_char(); // consume 'b'
+                        let quote = self.advance_char().unwrap().1; // consume quote
+                        let mut content = String::new();
+                        let mut closed = false;
+                        while let Some(&(_, c)) = self.chars.peek() {
+                            if c == quote {
+                                self.advance_char();
+                                closed = true;
+                                break;
+                            } else if c == '\\' {
+                                self.advance_char();
+                                if let Some(&(_, esc)) = self.chars.peek() {
+                                    content.push('\\');
+                                    content.push(esc);
+                                    self.advance_char();
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                content.push(c);
+                                self.advance_char();
+                            }
+                        }
+                        let end_offset = self.current_offset();
+                        let lexeme = self.input.get(start_offset..end_offset).unwrap_or("");
+                        let span = Span {
+                            start: Position {
+                                line: start_line,
+                                column: start_col,
+                                offset: start_offset,
+                            },
+                            end: Position {
+                                line: self.line,
+                                column: self.column,
+                                offset: end_offset,
+                            },
+                        };
+                        if !closed {
+                            tokens.push(Token {
+                                kind: TokenKind::Error,
+                                lexeme: lexeme.to_string(),
+                                literal: Some(LiteralValue::String(
+                                    "Unterminated byte literal".to_string(),
+                                )),
+                                span,
+                            });
+                        } else if quote == '\'' && content.len() != 1 {
+                            tokens.push(Token {
+                                kind: TokenKind::Error,
+                                lexeme: lexeme.to_string(),
+                                literal: Some(LiteralValue::String(
+                                    "Byte literal must be exactly one byte".to_string(),
+                                )),
+                                span,
+                            });
+                        } else if quote == '\'' {
+                            tokens.push(Token {
+                                kind: TokenKind::ByteLiteral,
+                                lexeme: lexeme.to_string(),
+                                literal: Some(LiteralValue::Byte(content.as_bytes()[0])),
+                                span,
+                            });
+                        } else {
+                            tokens.push(Token {
+                                kind: TokenKind::ByteLiteral,
+                                lexeme: lexeme.to_string(),
+                                literal: Some(LiteralValue::String(content)),
+                                span,
+                            });
+                        }
+                        continue;
+                    }
+                }
+            }
+
+            // Identifiers and keywords (Unicode-aware)
+            if is_xid_start(ch) {
+                // Use is_xid_start directly
                 let start = idx;
                 let start_col = self.column;
-                let mut end_col = self.column;
-                let mut ident = String::new();
+                let mut ident_str = String::new();
+                ident_str.push(ch);
+                self.advance_char();
+
                 while let Some(&(_, c)) = self.chars.peek() {
-                    if c.is_ascii_alphanumeric() || c == '_' {
-                        ident.push(c);
-                        let (_j, _) = self.advance_char().unwrap();
-                        end_col = self.column;
+                    if is_xid_continue(c) {
+                        // Use is_xid_continue directly
+                        ident_str.push(c);
+                        self.advance_char();
                     } else {
                         break;
                     }
                 }
                 let end_offset = self.current_offset();
-                let kind = match ident.as_str() {
+
+                // NFC Normalization
+                let normalized_ident: String = ident_str.nfc().collect();
+
+                let kind = match normalized_ident.as_str() {
                     "let" => TokenKind::Let,
                     "var" => TokenKind::Var,
                     "fn" => TokenKind::Fn,
@@ -384,7 +607,7 @@ impl<'a> Lexer<'a> {
 
                 tokens.push(Token {
                     kind,
-                    lexeme: ident,
+                    lexeme: normalized_ident.to_string(),
                     literal: literal_value,
                     span: Span {
                         start: Position {
@@ -394,7 +617,7 @@ impl<'a> Lexer<'a> {
                         },
                         end: Position {
                             line: self.line,
-                            column: end_col,
+                            column: self.column,
                             offset: end_offset,
                         },
                     },
@@ -431,7 +654,7 @@ impl<'a> Lexer<'a> {
             ];
             let mut matched = false;
             for (op, kind) in multi_char.iter() {
-                if self.input[idx..].starts_with(op) {
+                if self.input.get(idx..).unwrap_or("").starts_with(op) {
                     let start_offset = idx;
                     let start_col = self.column;
                     for _ in 0..op.len() {
@@ -508,6 +731,57 @@ impl<'a> Lexer<'a> {
                 },
             });
             self.advance_char();
+
+            // At the very end, if nothing matched, emit Error for unrecognized input
+            if !ch.is_ascii() || ch.is_control() {
+                let start_offset = idx;
+                let start_col = self.column;
+                self.advance_char();
+                let end_offset = self.current_offset();
+                tokens.push(Token {
+                    kind: TokenKind::Error,
+                    lexeme: self
+                        .input
+                        .get(start_offset..end_offset)
+                        .unwrap_or("")
+                        .to_string(),
+                    literal: Some(LiteralValue::String("Unrecognized input".to_string())),
+                    span: Span {
+                        start: Position {
+                            line: self.line,
+                            column: start_col,
+                            offset: start_offset,
+                        },
+                        end: Position {
+                            line: self.line,
+                            column: self.column,
+                            offset: end_offset,
+                        },
+                    },
+                });
+                continue;
+            }
+        }
+        // At EOF, flush any remaining dedents
+        while self.indent_stack.len() > 1 {
+            self.indent_stack.pop();
+            tokens.push(Token {
+                kind: TokenKind::Dedent,
+                lexeme: String::new(),
+                literal: None,
+                span: Span {
+                    start: Position {
+                        line: self.line,
+                        column: self.column,
+                        offset: self.current_offset(),
+                    },
+                    end: Position {
+                        line: self.line,
+                        column: self.column,
+                        offset: self.current_offset(),
+                    },
+                },
+            });
         }
         tokens.push(Token::eof_dummy());
         tokens
@@ -544,59 +818,146 @@ impl<'a> Lexer<'a> {
         let start_col = self.column;
 
         let mut lexeme = String::new();
-        let mut has_dot = false;
-        let mut has_exp = false;
+        let mut base = 10;
 
-        // Fix: allow leading dot (e.g. .5)
-        if let Some(&(_, ch)) = self.chars.peek() {
-            if ch == '.' {
-                has_dot = true;
-                lexeme.push('.');
-                self.advance_char();
+        // Check for 0x, 0o, 0b prefixes
+        if self.chars.peek().is_some_and(|&(_, c)| c == '0') {
+            lexeme.push('0');
+            self.advance_char();
+            if let Some(&(_, next_char)) = self.chars.peek() {
+                match next_char.to_ascii_lowercase() {
+                    'x' => {
+                        base = 16;
+                        lexeme.push(next_char);
+                        self.advance_char();
+                    }
+                    'o' => {
+                        base = 8;
+                        lexeme.push(next_char);
+                        self.advance_char();
+                    }
+                    'b' => {
+                        base = 2;
+                        lexeme.push(next_char);
+                        self.advance_char();
+                    }
+                    '0'..='9' | '.' | 'e' | 'E' => { /* stay base 10 */ }
+                    _ => {}
+                }
             }
         }
 
-        // Integer part (or fraction if leading dot)
+        let mut has_dot = false;
+        let mut has_exp = false;
+
+        // Allow leading dot for base 10 floats (e.g., .5)
+        if base == 10
+            && self.chars.peek().is_some_and(|&(_, ch)| ch == '.')
+            && self
+                .peek_nth_char(1)
+                .is_some_and(|(_, c)| c.is_ascii_digit())
+        {
+            has_dot = true;
+            lexeme.push('.');
+            self.advance_char();
+        }
+
+        // Digit loop
         while let Some(&(_, ch)) = self.chars.peek() {
             match ch {
-                '0'..='9' => {
+                '0'..='9' if ch.is_digit(base) => {
+                    lexeme.push(ch);
+                    self.advance_char();
+                }
+                'a'..='f' | 'A'..='F' if base == 16 => {
                     lexeme.push(ch);
                     self.advance_char();
                 }
                 '_' => {
-                    lexeme.push(ch);
-                    self.advance_char();
+                    if lexeme
+                        .ends_with(|c: char| c.is_digit(base) || (base != 10 && lexeme.len() == 2))
+                    {
+                        lexeme.push(ch);
+                        self.advance_char();
+                    } else {
+                        break;
+                    }
                 }
-                // Fractional part: allow dot if not already seen and not in exponent
-                '.' if !has_dot && !has_exp => {
-                    has_dot = true;
-                    lexeme.push('.');
-                    self.advance_char();
+                // Float specific for base 10
+                '.' if base == 10 && !has_dot && !has_exp => {
+                    // If next char is a digit, treat as float part
+                    if self
+                        .peek_nth_char(1)
+                        .is_some_and(|(_, c)| c.is_ascii_digit())
+                    {
+                        has_dot = true;
+                        lexeme.push('.');
+                        self.advance_char();
+                    } else {
+                        // If next char is not a digit, treat as float with trailing dot (e.g., 7.)
+                        has_dot = true;
+                        lexeme.push('.');
+                        self.advance_char();
+                        break;
+                    }
                 }
-                // Exponent part: only once
-                'e' | 'E' if !has_exp => {
+                'e' | 'E' if base == 10 && !has_exp => {
                     has_exp = true;
                     has_dot = true;
                     lexeme.push(ch);
                     self.advance_char();
-                    // Optional + or –
                     if let Some((_, next_ch)) = self.chars.peek() {
                         if *next_ch == '+' || *next_ch == '-' {
                             lexeme.push(*next_ch);
                             self.advance_char();
                         }
                     }
+                    if !self.chars.peek().is_some_and(|&(_, c)| c.is_ascii_digit()) {
+                        break;
+                    }
                 }
                 _ => break,
             }
         }
 
-        // Fix: allow trailing dot (e.g. 7.) as float
-        if !has_dot {
-            // If the lexeme ends with a dot, treat as float
-            if lexeme.ends_with('.') {
-                has_dot = true;
-            }
+        // Validate that if a prefix was consumed, there are actual digits after it
+        if (base == 16 && lexeme.eq_ignore_ascii_case("0x"))
+            || (base == 8 && lexeme.eq_ignore_ascii_case("0o"))
+            || (base == 2 && lexeme.eq_ignore_ascii_case("0b"))
+        {
+            let end_offset = self.current_offset();
+            return Token {
+                kind: TokenKind::Error,
+                lexeme: lexeme.clone(),
+                literal: Some(LiteralValue::String(format!(
+                    "Expected digits after base prefix '{}', but found none",
+                    &lexeme
+                ))),
+                span: Span {
+                    start: Position {
+                        line: start_line,
+                        column: start_col,
+                        offset: start_offset,
+                    },
+                    end: Position {
+                        line: self.line,
+                        column: self.column,
+                        offset: end_offset,
+                    },
+                },
+            };
+        }
+        if lexeme.ends_with('_') {
+            let end_offset = self.current_offset();
+            return Token {
+                kind: TokenKind::Error,
+                lexeme: lexeme.clone(),
+                literal: Some(LiteralValue::String(format!("Number literal cannot end with an underscore: '{}'. Remove the trailing underscore.", lexeme))),
+                span: Span {
+                    start: Position { line: start_line, column: start_col, offset: start_offset },
+                    end: Position { line: self.line, column: self.column, offset: end_offset },
+                },
+            };
         }
 
         let end_offset = self.current_offset();
@@ -613,37 +974,68 @@ impl<'a> Lexer<'a> {
             },
         };
 
-        // Strip underscores for parsing
-        let cleaned: String = lexeme.chars().filter(|&c| c != '_').collect();
+        let cleaned_lexeme: String = lexeme.chars().filter(|&c| c != '_').collect();
 
-        // Decide kind and parse value
         if has_dot {
-            match cleaned.parse::<f64>() {
+            match cleaned_lexeme.parse::<f64>() {
                 Ok(val) => Token {
                     kind: TokenKind::FloatLiteral,
-                    lexeme,
+                    lexeme: lexeme.clone(),
                     literal: Some(LiteralValue::Float(val)),
                     span,
                 },
                 Err(_) => Token {
                     kind: TokenKind::Error,
-                    lexeme,
-                    literal: None,
+                    lexeme: lexeme.clone(),
+                    literal: Some(LiteralValue::String(format!("Invalid float literal: '{}'. Expected a valid float (e.g., 1.23, 4e5, 7.), but got an invalid format.", lexeme))),
                     span,
                 },
             }
         } else {
-            match cleaned.parse::<i64>() {
+            let value_str_to_parse = if base != 10 {
+                if cleaned_lexeme.starts_with("0x")
+                    || cleaned_lexeme.starts_with("0X")
+                    || cleaned_lexeme.starts_with("0o")
+                    || cleaned_lexeme.starts_with("0O")
+                    || cleaned_lexeme.starts_with("0b")
+                    || cleaned_lexeme.starts_with("0B")
+                {
+                    &cleaned_lexeme[2..]
+                } else {
+                    cleaned_lexeme.as_str()
+                }
+            } else {
+                cleaned_lexeme.as_str()
+            };
+
+            if value_str_to_parse.is_empty() && lexeme == "0" && base == 10 {
+                return Token {
+                    kind: TokenKind::IntegerLiteral,
+                    lexeme: "0".to_string(),
+                    literal: Some(LiteralValue::Integer(0)),
+                    span,
+                };
+            }
+            if value_str_to_parse.is_empty() && base != 10 {
+                return Token {
+                    kind: TokenKind::Error,
+                    lexeme: lexeme.clone(),
+                    literal: Some(LiteralValue::String(format!("Invalid integer literal for base {}: '{}'. Expected only valid digits for this base.", base, lexeme))),
+                    span,
+                };
+            }
+
+            match i64::from_str_radix(value_str_to_parse, base) {
                 Ok(val) => Token {
                     kind: TokenKind::IntegerLiteral,
-                    lexeme,
+                    lexeme: lexeme.clone(),
                     literal: Some(LiteralValue::Integer(val)),
                     span,
                 },
                 Err(_) => Token {
                     kind: TokenKind::Error,
-                    lexeme,
-                    literal: None,
+                    lexeme: lexeme.clone(),
+                    literal: Some(LiteralValue::String(format!("Invalid integer literal for base {}: '{}'. Expected only valid digits for this base.", base, lexeme))),
                     span,
                 },
             }
@@ -674,23 +1066,22 @@ impl<'a> Lexer<'a> {
                             'n' => content.push('\n'),
                             't' => content.push('\t'),
                             '\\' => content.push('\\'),
-                            '"' => content.push('"'),
+                            '\"' => content.push('\"'),
                             // TODO: Add \u{...} handling here as per DESIGN_LEXER.md
                             _ => {
                                 // Invalid escape: emit error token
                                 let current_lex_end_offset = self.current_offset();
                                 let current_lex_end_col = self.column;
                                 let current_lex_end_line = self.line;
-                                let lexeme = self.input[start_offset..current_lex_end_offset + 1]
-                                    .to_string();
+                                let lexeme = self
+                                    .input
+                                    .get(start_offset..current_lex_end_offset + 1)
+                                    .unwrap_or("");
                                 self.advance_char(); // consume the invalid escape char
                                 return Token {
                                     kind: TokenKind::Error,
-                                    lexeme,
-                                    literal: Some(LiteralValue::String(format!(
-                                        "Invalid escape sequence in string literal: \\{}",
-                                        next_ch
-                                    ))),
+                                    lexeme: lexeme.to_string(),
+                                    literal: Some(LiteralValue::String(format!("Invalid escape sequence in string literal: \\{}. Only valid escapes are \\n, \\t, \\\\, \\\" and Unicode escapes.", next_ch))),
                                     span: Span {
                                         start: Position {
                                             line: start_line,
@@ -732,14 +1123,11 @@ impl<'a> Lexer<'a> {
         let current_lex_end_line = self.line;
 
         if !closed {
-            // The string was not properly closed. It could be EOF or an unescaped newline.
-            // The lexeme includes the opening quote up to the point of termination.
-            // The current_offset is correct here as it's where we stopped.
             return Token {
                 kind: TokenKind::Error,
-                lexeme: self.input[start_offset..current_lex_end_offset].to_string(),
+                lexeme: self.input.get(start_offset..current_lex_end_offset).unwrap_or("").to_string(),
                 literal: Some(LiteralValue::String(
-                    "Unterminated string literal".to_string(),
+                    "Unterminated string literal: expected closing quote \" before end of line or file.".to_string(),
                 )),
                 span: Span {
                     start: Position {
@@ -748,7 +1136,6 @@ impl<'a> Lexer<'a> {
                         offset: start_offset,
                     },
                     end: Position {
-                        // The end is where the lexer stopped processing this token.
                         line: current_lex_end_line,
                         column: current_lex_end_col,
                         offset: current_lex_end_offset,
@@ -759,7 +1146,11 @@ impl<'a> Lexer<'a> {
 
         Token {
             kind: TokenKind::StringLiteral,
-            lexeme: self.input[start_offset..current_lex_end_offset].to_string(),
+            lexeme: self
+                .input
+                .get(start_offset..current_lex_end_offset)
+                .unwrap_or("")
+                .to_string(),
             literal: Some(LiteralValue::String(content)),
             span: Span {
                 start: Position {
@@ -881,13 +1272,19 @@ impl<'a> Lexer<'a> {
         let current_lex_end_col = self.column;
         let current_lex_end_line = self.line;
 
-        let final_lexeme = self.input[start_offset..current_lex_end_offset].to_string();
+        let final_lexeme = self
+            .input
+            .get(start_offset..current_lex_end_offset)
+            .unwrap_or("");
 
         if let Some(msg) = error_msg {
             return Token {
                 kind: TokenKind::Error,
-                lexeme: final_lexeme,
-                literal: Some(LiteralValue::String(msg)), // Using String for error messages
+                lexeme: final_lexeme.to_string(),
+                literal: Some(LiteralValue::String(format!(
+                    "{} (in character literal)",
+                    msg
+                ))),
                 span: Span {
                     start: Position {
                         line: start_line,
@@ -907,7 +1304,7 @@ impl<'a> Lexer<'a> {
             // This case should ideally be covered by error_msg logic, but as a fallback.
             return Token {
                 kind: TokenKind::Error,
-                lexeme: final_lexeme,
+                lexeme: final_lexeme.to_string(),
                 literal: Some(LiteralValue::String(
                     "Unterminated character literal (general)".to_string(),
                 )),
@@ -932,7 +1329,7 @@ impl<'a> Lexer<'a> {
                 // Double check, though error_msg should catch multi-char or empty.
                 Token {
                     kind: TokenKind::CharacterLiteral,
-                    lexeme: final_lexeme,
+                    lexeme: final_lexeme.to_string(),
                     literal: Some(LiteralValue::Char(cv)),
                     span: Span {
                         start: Position {
@@ -951,7 +1348,7 @@ impl<'a> Lexer<'a> {
                 // Should have been caught by error_msg logic for multi-char or empty.
                 Token {
                     kind: TokenKind::Error,
-                    lexeme: final_lexeme,
+                    lexeme: final_lexeme.to_string(),
                     literal: Some(LiteralValue::String(
                         "Invalid character literal state".to_string(),
                     )),
@@ -973,7 +1370,7 @@ impl<'a> Lexer<'a> {
             // Should be caught by empty literal error check.
             Token {
                 kind: TokenKind::Error,
-                lexeme: final_lexeme,
+                lexeme: final_lexeme.to_string(),
                 literal: Some(LiteralValue::String(
                     "Empty character literal (final check)".to_string(),
                 )),
