@@ -1,6 +1,7 @@
 use ferra_lexer::{Lexer, LiteralValue, TokenKind};
 
 #[test]
+#[allow(clippy::approx_constant)]
 fn float_literals() {
     let tokens = Lexer::new("3.14 2.0e10 1_000.5 42 1.0e-3 7. .5").lex();
     let kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
