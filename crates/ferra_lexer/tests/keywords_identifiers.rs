@@ -33,7 +33,7 @@ fn test_identifier() {
 #[test]
 fn test_keywords_and_identifiers() {
     let tokens = lex_all("let var fn async data match true false ident1 _ident2");
-    let expected_kinds = vec![
+    let expected_kinds = [
         TokenKind::Let,
         TokenKind::Var,
         TokenKind::Fn,
@@ -46,7 +46,7 @@ fn test_keywords_and_identifiers() {
         TokenKind::Identifier,
         TokenKind::Eof,
     ];
-    let expected_lexemes = vec![
+    let expected_lexemes = [
         "let", "var", "fn", "async", "data", "match", "true", "false", "ident1", "_ident2", "",
     ];
     let expected_literals = vec![
