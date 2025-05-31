@@ -94,12 +94,21 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 - [x] Float literal with underscore in exponent (test implemented and passing)
 - [x] Mixed tabs/spaces in indentation: runtime check and test needed (not yet implemented/tested)
 - [x] Multi-line token span accuracy: error token span for unterminated multi-line block comments implicitly handled, but explicit test asserting multi-line span details (line, col, offset) is missing. (`tests/comments.rs` for `test_unterminated_block_comment` could be augmented).
+- [x] **CRITICAL: Blank/comment-only line handling bug**: identifiers on indented lines after blank/comment lines are dropped (affects `blank_and_comment_only_lines_indentation` test) - **FIXED**
+- [x] **Span precision verification**: multi-line tokens need explicit span boundary tests - **COMPLETED** (added `test_multi_line_span_precision`)
+- [x] **CI fuzz integration**: property-based fuzz tests not wired into GitHub Actions - **COMPLETED** (added proptest CI workflows)
 - [ ] Rich error diagnostics: consider Diagnostic enum and structured errors (not yet implemented)
 
-## 7. Performance & Robustness (Future)
+## 7. Performance & Robustness (Current & Future)
+- [x] **CRITICAL FIX: Blank line identifier bug**: Investigate line-start flag reset after skipping blank & comment-only lines - **FIXED**
+- [x] **Span regression tests**: Add tests asserting `start.line < end.line` and exact column/offset values for multi-line tokens - **COMPLETED**
+- [x] **Ragel DFA migration prep**: Added comprehensive compatibility test suite in `tests/ragel_migration.rs` to ensure future Ragel migration maintains identical behavior - **COMPLETED**
+- [x] **CI fuzz harness**: Add nightly workflow matrix job (`cargo fuzz run lexer`) to guard against regressions - **COMPLETED** (proptest-based, 10K cases in CI, 100K nightly)
+- [ ] **Ragel DFA migration**: Performance & maintainability improvement - keep on roadmap once hand-written lexer passes full parser smoke tests
 - [ ] Efficient handling of large files
-- [ ] Lexer benchmarks
+- [ ] Lexer benchmarks  
 - [ ] Error recovery strategies
+- [ ] Zero-copy lexeme optimization (defer to Ragel refactor: slice `&str` or use `Cow`)
 - [ ] (Future) Hexadecimal/binary float literal syntax
 
 ---

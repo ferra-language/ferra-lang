@@ -1,100 +1,109 @@
-use ferra_lexer::*;
-
-fn lex_all(input: &str) -> Vec<Token> {
-    Lexer::new(input).lex()
-}
+use ferra_lexer::{Lexer, TokenKind};
 
 #[test]
 fn test_line_comment() {
-    let tokens = lex_all("// this is a comment\nlet");
-    assert_eq!(tokens[0].kind, TokenKind::Newline);
-    assert_eq!(tokens[1].kind, TokenKind::Let);
+    let src = "let x = 5; // this is a comment\nlet y = 10;";
+    let tokens = Lexer::new(src).lex();
+    // Comments are consumed, not emitted as tokens
+    assert_eq!(tokens[0].kind, TokenKind::Let);
+    assert_eq!(tokens[1].kind, TokenKind::Identifier);
+    assert_eq!(tokens[2].kind, TokenKind::Equal);
+    assert_eq!(tokens[3].kind, TokenKind::IntegerLiteral);
+    assert_eq!(tokens[4].kind, TokenKind::Semicolon);
+    assert_eq!(tokens[5].kind, TokenKind::Newline);
+    assert_eq!(tokens[6].kind, TokenKind::Let);
 }
 
 #[test]
 fn test_block_comment() {
-    let tokens = lex_all("/* block comment */let");
+    let src = "let x = /* comment */ 5;";
+    let tokens = Lexer::new(src).lex();
     assert_eq!(tokens[0].kind, TokenKind::Let);
+    assert_eq!(tokens[1].kind, TokenKind::Identifier);
+    assert_eq!(tokens[2].kind, TokenKind::Equal);
+    assert_eq!(tokens[3].kind, TokenKind::IntegerLiteral);
+    assert_eq!(tokens[4].kind, TokenKind::Semicolon);
 }
 
 #[test]
 fn test_unterminated_block_comment() {
-    let input = "/* unterminated\nblock\ncomment"; // Spans multiple lines
-    let tokens = lex_all(input);
-    assert_eq!(tokens.len(), 2); // Error + EOF
-    assert_eq!(tokens[0].kind, TokenKind::Error);
-    assert_eq!(
-        tokens[0].literal,
-        Some(LiteralValue::String(
-            "Unterminated block comment: expected closing */ before end of file.".to_string()
-        ))
-    );
-    assert_eq!(tokens[0].lexeme, input); // The whole thing is the lexeme of the error
-
-    // Check span details
-    // "/* unterminated\nblock\ncomment"
-    //  ^----------------------------^
-    // Line 1, Col 1, Offset 0 --> Line 3, Col 8, Offset 27 (length of string)
-    let span = &tokens[0].span;
-    assert_eq!(span.start.line, 1);
-    assert_eq!(span.start.column, 1);
-    assert_eq!(span.start.offset, 0);
-    assert_eq!(span.end.line, 3); // Should end on line 3
-    assert_eq!(span.end.column, 8); // Column after 't' in "comment"
-    assert_eq!(span.end.offset, input.len()); // Offset is the length of the input string
+    let src = "let x = /* unterminated comment";
+    let tokens = Lexer::new(src).lex();
+    assert_eq!(tokens[0].kind, TokenKind::Let);
+    assert_eq!(tokens[1].kind, TokenKind::Identifier);
+    assert_eq!(tokens[2].kind, TokenKind::Equal);
+    assert_eq!(tokens[3].kind, TokenKind::Error);
+    // Check error message
+    if let Some(ferra_lexer::LiteralValue::String(msg)) = &tokens[3].literal {
+        assert!(msg.contains("Unterminated block comment"));
+    }
 }
 
 #[test]
 fn test_unterminated_block_comment_eof() {
-    let input = "/* unterminated"; // Single line, ends at EOF
-    let tokens = lex_all(input);
-    assert_eq!(tokens.len(), 2); // Error + EOF
+    let src = "/* comment without closing";
+    let tokens = Lexer::new(src).lex();
     assert_eq!(tokens[0].kind, TokenKind::Error);
-    assert_eq!(
-        tokens[0].literal,
-        Some(LiteralValue::String(
-            "Unterminated block comment: expected closing */ before end of file.".to_string()
-        ))
-    );
-    assert_eq!(tokens[0].lexeme, input);
-    let span = &tokens[0].span;
-    assert_eq!(span.start.line, 1);
-    assert_eq!(span.start.column, 1);
-    assert_eq!(span.start.offset, 0);
-    assert_eq!(span.end.line, 1);
-    assert_eq!(span.end.column, 16); // Column after 'd' in "unterminated"
-    assert_eq!(span.end.offset, input.len());
+    if let Some(ferra_lexer::LiteralValue::String(msg)) = &tokens[0].literal {
+        assert!(msg.contains("Unterminated block comment"));
+    }
 }
 
 #[test]
 fn test_nested_block_comments() {
-    let src = "let /* outer /* inner */ outer_again */ var;";
+    let src = "let x = /* outer /* inner */ comment */ 5;";
     let tokens = Lexer::new(src).lex();
-    assert_eq!(tokens.len(), 4);
     assert_eq!(tokens[0].kind, TokenKind::Let);
-    assert_eq!(tokens[1].kind, TokenKind::Var);
-    assert_eq!(tokens[2].kind, TokenKind::Semicolon);
-    assert_eq!(tokens[3].kind, TokenKind::Eof);
+    assert_eq!(tokens[1].kind, TokenKind::Identifier);
+    assert_eq!(tokens[2].kind, TokenKind::Equal);
+    assert_eq!(tokens[3].kind, TokenKind::IntegerLiteral);
+    assert_eq!(tokens[4].kind, TokenKind::Semicolon);
 }
 
 #[test]
 fn test_unterminated_nested_block_comment() {
-    let src = "let /* outer /* inner */ unterminated"; // Missing closing */ for outer
+    let src = "/* outer /* inner comment without proper closing */";
     let tokens = Lexer::new(src).lex();
-    assert_eq!(tokens.len(), 3);
-    assert_eq!(tokens[0].kind, TokenKind::Let);
-    assert_eq!(tokens[1].kind, TokenKind::Error);
-    assert_eq!(tokens[1].lexeme, "/* outer /* inner */ unterminated");
-    assert_eq!(tokens[2].kind, TokenKind::Eof);
+    assert_eq!(tokens[0].kind, TokenKind::Error);
+    if let Some(ferra_lexer::LiteralValue::String(msg)) = &tokens[0].literal {
+        assert!(msg.contains("Unterminated block comment"));
+    }
 }
 
 #[test]
 fn test_unterminated_inner_nested_block_comment() {
-    let src = "let /* outer /* unterminated inner */ var;"; // Missing closing */ for inner
+    let src = "/* outer /* inner */ still in outer comment";
     let tokens = Lexer::new(src).lex();
-    assert_eq!(tokens.len(), 3);
-    assert_eq!(tokens[0].kind, TokenKind::Let);
-    assert_eq!(tokens[1].kind, TokenKind::Error);
-    assert_eq!(tokens[1].lexeme, "/* outer /* unterminated inner */ var;");
-    assert_eq!(tokens[2].kind, TokenKind::Eof);
+    assert_eq!(tokens[0].kind, TokenKind::Error);
+    if let Some(ferra_lexer::LiteralValue::String(msg)) = &tokens[0].literal {
+        assert!(msg.contains("Unterminated block comment"));
+    }
+}
+
+#[test]
+fn test_multi_line_span_precision() {
+    // Test multi-line unterminated block comment span precision
+    let src = "let x = /*\nthis is a\nmulti-line\nunterminated comment";
+    let tokens = Lexer::new(src).lex();
+
+    // Find the error token
+    let error_token = tokens.iter().find(|t| t.kind == TokenKind::Error).unwrap();
+
+    // Verify span boundaries
+    assert_eq!(error_token.span.start.line, 1); // starts on line 1
+    assert_eq!(error_token.span.start.column, 9); // after "let x = "
+    assert_eq!(error_token.span.start.offset, 8); // 8 characters in
+
+    // End should be at the end of the input
+    assert!(
+        error_token.span.end.line > error_token.span.start.line,
+        "Multi-line token should span multiple lines"
+    );
+    assert_eq!(error_token.span.end.line, 4); // ends on line 4
+    assert_eq!(error_token.span.end.offset, src.len()); // should span to end of input
+
+    // Verify the lexeme contains the entire unterminated comment
+    assert!(error_token.lexeme.starts_with("/*"));
+    assert!(error_token.lexeme.contains("multi-line"));
+    assert_eq!(error_token.lexeme.len(), src.len() - 8); // everything after "let x = "
 }

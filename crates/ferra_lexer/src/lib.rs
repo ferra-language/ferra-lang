@@ -221,7 +221,6 @@ impl<'a> Lexer<'a> {
                         },
                     },
                 });
-                eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
                 continue;
             }
             // Indentation logic at start of line
@@ -240,14 +239,14 @@ impl<'a> Lexer<'a> {
                         }
                         indent_char_type = Some('s');
                         current_indent += 1;
-                        self.advance_char_for_indent(); // Use a separate advance for indent logic
+                        self.advance_char(); // Use normal advance_char
                     } else if ch == '\t' {
                         if indent_char_type == Some('s') {
                             mixed_indent_error = true;
                         }
                         indent_char_type = Some('t');
                         current_indent += 4; // Tabs are 4 spaces
-                        self.advance_char_for_indent();
+                        self.advance_char();
                     } else {
                         break; // Not whitespace
                     }
@@ -259,7 +258,7 @@ impl<'a> Lexer<'a> {
                     while let Some(&(_, ch_err)) = self.chars.peek() {
                         if ch_err != '\n' && ch_err.is_whitespace() {
                             _error_lexeme_len += ch_err.len_utf8();
-                            self.advance_char_for_indent();
+                            self.advance_char();
                         } else {
                             break;
                         }
@@ -320,18 +319,12 @@ impl<'a> Lexer<'a> {
                             self.indent_stack.pop();
                             self.pending_dedents += 1;
                         }
-                        continue;
                     }
-                    // Advance chars to after leading whitespace
-                    while self
-                        .chars
-                        .peek()
-                        .is_some_and(|&(_, c)| c == ' ' || c == '\t')
-                    {
-                        self.advance_char();
-                    }
+                    // Don't advance chars again - we already consumed leading whitespace in indentation calculation above
                     self.at_line_start = false;
                 }
+                // After indentation processing, re-peek to get the current character
+                continue;
             }
             // Handle Newlines
             if ch == '\n' {
@@ -355,7 +348,6 @@ impl<'a> Lexer<'a> {
                         },
                     },
                 });
-                eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
                 self.at_line_start = true;
                 continue;
             }
@@ -366,7 +358,6 @@ impl<'a> Lexer<'a> {
                         .is_some_and(|(_, c)| c.is_ascii_digit()))
             {
                 tokens.push(self.lex_number());
-                eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
                 continue;
             }
 
@@ -471,14 +462,12 @@ impl<'a> Lexer<'a> {
             // String Literals: "..."
             if ch == '"' {
                 tokens.push(self.lex_string_literal());
-                eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
                 continue;
             }
 
             // Character Literals: '...'
             if ch == '\'' {
                 tokens.push(self.lex_char_literal());
-                eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
                 continue;
             }
 
@@ -542,7 +531,6 @@ impl<'a> Lexer<'a> {
                 if let Some((_, next_ch)) = self.peek_nth_char(1) {
                     if next_ch == '\'' || next_ch == '"' {
                         tokens.push(self.lex_byte_literal(idx)); // Pass idx for start_offset
-                        eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
                         continue;
                     }
                 }
@@ -551,7 +539,6 @@ impl<'a> Lexer<'a> {
             // Raw String Literals: r"..."
             if ch == 'r' && self.peek_nth_char(1).is_some_and(|(_, c)| c == '"') {
                 tokens.push(self.lex_raw_string_literal(idx));
-                eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
                 continue;
             }
 
@@ -723,7 +710,6 @@ impl<'a> Lexer<'a> {
                     },
                 },
             });
-            eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
             self.advance_char();
 
             // At the very end, if nothing matched, emit Error for unrecognized input
@@ -753,7 +739,6 @@ impl<'a> Lexer<'a> {
                         },
                     },
                 });
-                eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
                 continue;
             }
         }
@@ -777,10 +762,8 @@ impl<'a> Lexer<'a> {
                     },
                 },
             });
-            eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
         }
         tokens.push(Token::eof_dummy());
-        eprintln!("[DEBUG] Token: {:?}", tokens.last().unwrap());
         tokens
     }
 
@@ -1408,12 +1391,6 @@ impl<'a> Lexer<'a> {
         let start_line = self.line;
         let start_col = self.column;
 
-        eprintln!(
-            "[DEBUG] lex_char_literal: input='{}', next_char={:?}",
-            self.input.get(start_offset..).unwrap_or(""),
-            self.chars.peek()
-        );
-
         self.advance_char(); // consume the opening quote '
 
         let mut char_val: Option<char> = None;
@@ -1448,7 +1425,6 @@ impl<'a> Lexer<'a> {
                                     if let Some(&(_, ch)) = self.chars.peek() {
                                         if ch == '\'' {
                                             self.advance_char(); // consume closing quote
-                                            eprintln!("[DEBUG] Parsed unicode escape: input='{}', char={:?}", self.input.get(start_offset..self.current_offset()).unwrap_or(""), cv);
                                             let cv = char_val.unwrap();
                                             let final_lexeme = self
                                                 .input
@@ -1680,16 +1656,6 @@ impl<'a> Lexer<'a> {
                         offset: current_lex_end_offset,
                     },
                 },
-            }
-        }
-    }
-
-    // Helper function to advance char and update column, but not line (for indent scanning)
-    fn advance_char_for_indent(&mut self) {
-        if let Some((_, ch)) = self.chars.next() {
-            if ch != '\n' {
-                // Should not encounter newline during indent scan itself
-                self.column += 1;
             }
         }
     }

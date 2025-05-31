@@ -61,20 +61,22 @@ fn indentation_tokens() {
         println!("{:?} '{}'", t.kind, t.lexeme);
     }
     let kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
-    // Actual behavior from debug output
+    // Updated to match the new correct behavior where all identifiers are preserved
     assert_eq!(
         kinds,
         vec![
             &TokenKind::Identifier, // a
             &TokenKind::Newline,
             &TokenKind::Indent,     // for "    b"
+            &TokenKind::Identifier, // b (now correctly preserved!)
             &TokenKind::Newline,    // after b
             &TokenKind::Indent,     // for "        c"
+            &TokenKind::Identifier, // c (now correctly preserved!)
             &TokenKind::Newline,    // after c
             &TokenKind::Dedent,     // dedent for d
-            &TokenKind::Dedent,     // dedent to base level
-            &TokenKind::Identifier, // d
+            &TokenKind::Identifier, // d (now correctly preserved!)
             &TokenKind::Newline,    // after d
+            &TokenKind::Dedent,     // dedent to base level
             &TokenKind::Identifier, // e
             &TokenKind::Eof,
         ]
@@ -100,17 +102,17 @@ fn blank_and_comment_only_lines_indentation() {
             .collect::<Vec<_>>()
     );
     let kinds: Vec<_> = tokens.iter().map(|t| t.kind.clone()).collect();
-    // Actual behavior: comments are skipped, blank lines produce newlines
-    // The identifier 'b' seems to be missing from output - this might be a lexer bug
-    // For now, matching actual behavior
+    // Updated to match the new correct behavior where 'b' is properly preserved
     assert_eq!(
         kinds,
         vec![
             TokenKind::Identifier, // a
             TokenKind::Newline,
             TokenKind::Indent,
-            TokenKind::Newline, // from blank line
-            TokenKind::Newline, // from comment line
+            TokenKind::Newline,    // from blank line
+            TokenKind::Newline,    // from comment line
+            TokenKind::Identifier, // b (now correctly preserved!)
+            TokenKind::Newline,    // after b
             TokenKind::Dedent,
             TokenKind::Identifier, // c
             TokenKind::Eof,
@@ -125,13 +127,13 @@ fn test_mixed_indentation_error() {
 
     // Valid: only spaces after newline
     let tokens_spaces = Lexer::new("x\n  a").lex();
-    assert_eq!(tokens_spaces.len(), 5); // x, newline, indent, newline, eof (a seems to be missing)
+    assert_eq!(tokens_spaces.len(), 6); // x, newline, indent, a, dedent, eof
     assert!(!tokens_spaces.iter().any(|t| t.kind == TokenKind::Error));
     assert_eq!(tokens_spaces[2].kind, TokenKind::Indent);
 
     // Valid: only tabs after newline (1 tab = 4 spaces)
     let tokens_tabs = Lexer::new("x\n\ta").lex();
-    assert_eq!(tokens_tabs.len(), 5);
+    assert_eq!(tokens_tabs.len(), 6); // x, newline, indent, a, dedent, eof
     assert!(!tokens_tabs.iter().any(|t| t.kind == TokenKind::Error));
     assert_eq!(tokens_tabs[2].kind, TokenKind::Indent);
 
@@ -190,4 +192,84 @@ fn test_expansion_tabs_to_spaces() {
     assert_eq!(tokens_ts[1].kind, TokenKind::Newline);
     // Should have an indent token somewhere
     assert!(tokens_ts.iter().any(|t| t.kind == TokenKind::Indent));
+}
+
+#[test]
+fn test_blank_comment_lines_preserve_identifiers() {
+    // This test explicitly checks for the bug where identifiers after blank/comment lines are dropped
+    let src = "a\n    \n    // comment\n    b\nc";
+    let tokens = Lexer::new(src).lex();
+
+    // Extract all identifiers to verify they're all present
+    let idents: Vec<&str> = tokens
+        .iter()
+        .filter(|t| t.kind == TokenKind::Identifier)
+        .map(|t| t.lexeme.as_str())
+        .collect();
+
+    // CRITICAL: Should find all three identifiers: a, b, c
+    // Currently fails because 'b' is missing - this is the bug to fix
+    assert_eq!(
+        idents,
+        vec!["a", "b", "c"],
+        "Expected all identifiers a, b, c but got: {:?}",
+        idents
+    );
+}
+
+#[test]
+fn test_simple_dedent_case() {
+    // Simplified test: just a simple dedent case
+    let src = "a\n    b\nc";
+    let tokens = Lexer::new(src).lex();
+
+    println!(
+        "All tokens: {:?}",
+        tokens
+            .iter()
+            .map(|t| (t.kind.clone(), t.lexeme.clone()))
+            .collect::<Vec<_>>()
+    );
+
+    // Extract all identifiers to verify they're all present
+    let idents: Vec<&str> = tokens
+        .iter()
+        .filter(|t| t.kind == TokenKind::Identifier)
+        .map(|t| t.lexeme.as_str())
+        .collect();
+
+    assert_eq!(
+        idents,
+        vec!["a", "b", "c"],
+        "Expected all identifiers a, b, c but got: {:?}",
+        idents
+    );
+}
+
+#[test]
+fn test_minimal_indent_case() {
+    // Even simpler: just one space and one character
+    let src = "a\n b";
+    let tokens = Lexer::new(src).lex();
+
+    println!(
+        "Minimal tokens: {:?}",
+        tokens
+            .iter()
+            .map(|t| (t.kind.clone(), t.lexeme.clone()))
+            .collect::<Vec<_>>()
+    );
+
+    let idents: Vec<&str> = tokens
+        .iter()
+        .filter(|t| t.kind == TokenKind::Identifier)
+        .map(|t| t.lexeme.as_str())
+        .collect();
+
+    assert_eq!(
+        idents,
+        vec!["a", "b"],
+        "Expected identifiers a, b but got: {:?}",
+        idents
+    );
 }

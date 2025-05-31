@@ -83,3 +83,25 @@ jobs:
       #   run: |
       #     cargo install cargo-audit
       #     cargo audit 
+
+  fuzz:
+    name: Fuzz Testing
+    runs-on: ubuntu-latest
+    # Run fuzz tests on main branch pushes and nightly schedule
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run proptest fuzz tests (extended)
+        run: |
+          cd crates/ferra_lexer
+          # Run proptest with more cases for better coverage
+          PROPTEST_CASES=10000 cargo test fuzz --release -- --nocapture
+        env:
+          RUST_BACKTRACE: 1
+
+      - name: Report fuzz results
+        run: echo "✅ Proptest fuzzing completed successfully" 
