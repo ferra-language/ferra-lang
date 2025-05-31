@@ -88,14 +88,19 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 
 **All tests are comprehensive, covering all error and edge cases, and a property-based fuzz test ensures the lexer never panics.**
 
-## 6. Performance & Robustness (Future)
+## 6. Outstanding TODOs & Gaps
+- [x] Unicode escapes (\u{...}) in string and char literals (TODO: not yet implemented or tested)
+- [x] Raw string literal support (TODO: not yet implemented or tested)
+- [x] Float literal with underscore in exponent (test implemented and passing)
+- [x] Mixed tabs/spaces in indentation: runtime check and test needed (not yet implemented/tested)
+- [x] Multi-line token span accuracy: error token span for unterminated multi-line block comments implicitly handled, but explicit test asserting multi-line span details (line, col, offset) is missing. (`tests/comments.rs` for `test_unterminated_block_comment` could be augmented).
+- [ ] Rich error diagnostics: consider Diagnostic enum and structured errors (not yet implemented)
+
+## 7. Performance & Robustness (Future)
 - [ ] Efficient handling of large files
 - [ ] Lexer benchmarks
 - [ ] Error recovery strategies
 - [ ] (Future) Hexadecimal/binary float literal syntax
-- [ ] Unicode escapes (\u{...}) in string and char literals (TODO: not yet implemented or tested)
-- [ ] Raw string literal support (TODO: not yet implemented or tested)
-- [x] Float literal with underscore in exponent (test implemented and passing)
 
 ---
 

@@ -181,3 +181,38 @@ fn test_char_literal_invalid_escape() {
     // Optionally, check that the last token is EOF
     assert_eq!(tokens.last().unwrap().kind, TokenKind::Eof);
 }
+
+#[test]
+fn test_char_unicode_escapes() {
+    let src = "'\\u{41}'"; // 'A'
+    let tokens = lex_all(src);
+    assert_eq!(tokens[0].kind, TokenKind::CharacterLiteral);
+    assert_eq!(tokens[0].literal, Some(LiteralValue::Char('A')));
+
+    let src_multichar_unicode = "'\\u{1F600}'"; // '😀'
+    let tokens_multi = lex_all(src_multichar_unicode);
+    assert_eq!(tokens_multi[0].kind, TokenKind::CharacterLiteral);
+    assert_eq!(tokens_multi[0].literal, Some(LiteralValue::Char('😀')));
+
+    let src_empty_braces = "'\\u{}'";
+    let tokens_empty = lex_all(src_empty_braces);
+    assert_eq!(tokens_empty[0].kind, TokenKind::Error);
+    assert!(
+        matches!(tokens_empty[0].literal.as_ref().unwrap(), LiteralValue::String(msg) if msg.contains("empty hex code \\u{}"))
+    );
+
+    let src_unclosed_escape = "'\\u{41"; // unclosed, then EOF
+    let tokens_unclosed = lex_all(src_unclosed_escape);
+    assert_eq!(tokens_unclosed[0].kind, TokenKind::Error);
+    assert!(
+        matches!(tokens_unclosed[0].literal.as_ref().unwrap(), LiteralValue::String(msg) if msg.contains("unclosed \\u{41} sequence"))
+    );
+
+    // Char literal specific: what if \u{...} is followed by more chars before closing quote?
+    let src_unicode_plus_char = "'\\u{41}b'";
+    let tokens_unicode_plus = lex_all(src_unicode_plus_char);
+    assert_eq!(tokens_unicode_plus[0].kind, TokenKind::Error);
+    assert!(
+        matches!(tokens_unicode_plus[0].literal.as_ref().unwrap(), LiteralValue::String(msg) if msg.contains("Multi-character literal or unterminated (in character literal)"))
+    );
+}

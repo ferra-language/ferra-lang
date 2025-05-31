@@ -19,7 +19,9 @@ fn test_block_comment() {
 
 #[test]
 fn test_unterminated_block_comment() {
-    let tokens = lex_all("/* unterminated");
+    let input = "/* unterminated\nblock\ncomment"; // Spans multiple lines
+    let tokens = lex_all(input);
+    assert_eq!(tokens.len(), 2); // Error + EOF
     assert_eq!(tokens[0].kind, TokenKind::Error);
     assert_eq!(
         tokens[0].literal,
@@ -27,6 +29,41 @@ fn test_unterminated_block_comment() {
             "Unterminated block comment: expected closing */ before end of file.".to_string()
         ))
     );
+    assert_eq!(tokens[0].lexeme, input); // The whole thing is the lexeme of the error
+
+    // Check span details
+    // "/* unterminated\nblock\ncomment"
+    //  ^----------------------------^
+    // Line 1, Col 1, Offset 0 --> Line 3, Col 8, Offset 27 (length of string)
+    let span = &tokens[0].span;
+    assert_eq!(span.start.line, 1);
+    assert_eq!(span.start.column, 1);
+    assert_eq!(span.start.offset, 0);
+    assert_eq!(span.end.line, 3); // Should end on line 3
+    assert_eq!(span.end.column, 8); // Column after 't' in "comment"
+    assert_eq!(span.end.offset, input.len()); // Offset is the length of the input string
+}
+
+#[test]
+fn test_unterminated_block_comment_eof() {
+    let input = "/* unterminated"; // Single line, ends at EOF
+    let tokens = lex_all(input);
+    assert_eq!(tokens.len(), 2); // Error + EOF
+    assert_eq!(tokens[0].kind, TokenKind::Error);
+    assert_eq!(
+        tokens[0].literal,
+        Some(LiteralValue::String(
+            "Unterminated block comment: expected closing */ before end of file.".to_string()
+        ))
+    );
+    assert_eq!(tokens[0].lexeme, input);
+    let span = &tokens[0].span;
+    assert_eq!(span.start.line, 1);
+    assert_eq!(span.start.column, 1);
+    assert_eq!(span.start.offset, 0);
+    assert_eq!(span.end.line, 1);
+    assert_eq!(span.end.column, 16); // Column after 'd' in "unterminated"
+    assert_eq!(span.end.offset, input.len());
 }
 
 #[test]

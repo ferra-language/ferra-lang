@@ -11,13 +11,14 @@ fn test_empty_input() {
 }
 
 #[test]
-fn test_whitespace_only() {
-    let tokens = lex_all("   \t\n  ");
-    assert_eq!(tokens.len(), 4);
-    assert_eq!(tokens[0].kind, TokenKind::Newline);
-    assert_eq!(tokens[1].kind, TokenKind::Indent);
-    assert_eq!(tokens[2].kind, TokenKind::Dedent);
-    assert_eq!(tokens[3].kind, TokenKind::Eof);
+fn test_indentation_with_whitespace() {
+    let tokens = lex_all("a\n  ");
+    assert_eq!(tokens.len(), 5);
+    assert_eq!(tokens[0].kind, TokenKind::Identifier); // a
+    assert_eq!(tokens[1].kind, TokenKind::Newline);
+    assert_eq!(tokens[2].kind, TokenKind::Indent);
+    assert_eq!(tokens[3].kind, TokenKind::Dedent);
+    assert_eq!(tokens[4].kind, TokenKind::Eof);
 }
 
 #[test]

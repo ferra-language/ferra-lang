@@ -76,7 +76,7 @@ fn test_string_literal_unterminated_with_backslash_at_eof() {
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String(
-            "Unterminated string literal: expected closing quote \" before end of line or file."
+            "Unterminated escape sequence at end of string literal: expected character after \\"
                 .to_string()
         ))
     );
@@ -119,7 +119,7 @@ fn test_string_literal_invalid_escape_sequence() {
     assert_eq!(tokens[0].lexeme, input[..10].to_string()); // "invalid\q
     assert_eq!(
         tokens[0].literal,
-        Some(LiteralValue::String("Invalid escape sequence in string literal: \\q. Only valid escapes are \\n, \\t, \\\\, \\\" and Unicode escapes.".to_string()))
+        Some(LiteralValue::String("Invalid escape sequence in string literal: \\q. Only valid escapes are \\n, \\t, \\\\, \\\" and \\u{...}.".to_string()))
     );
     assert_eq!(tokens[1].kind, TokenKind::Identifier);
     assert_eq!(tokens[1].lexeme, "escape");
@@ -154,4 +154,102 @@ fn test_string_multiple_escapes_and_chars() {
         Some(LiteralValue::String("ab\ncd\t ef\\gh\"ij".to_string()))
     );
     assert_eq!(tokens[0].span.end.offset, input.len());
+}
+
+#[test]
+fn test_string_unicode_escapes() {
+    let src = "\"\\u{41}\\u{DF}\\u{1F600}\""; // A, ß, 😀
+    let tokens = lex_all(src);
+    assert_eq!(tokens[0].kind, TokenKind::StringLiteral);
+    assert_eq!(
+        tokens[0].literal,
+        Some(LiteralValue::String("Aß😀".to_string()))
+    );
+
+    let src_empty_braces = "\"\\u{}\"";
+    let tokens_empty = lex_all(src_empty_braces);
+    assert_eq!(tokens_empty[0].kind, TokenKind::Error);
+    assert!(
+        matches!(tokens_empty[0].literal.as_ref().unwrap(), LiteralValue::String(msg) if msg.contains("empty hex code \\u{}"))
+    );
+
+    let src_no_closing_brace = "\"\\u{41\"";
+    let tokens_no_close = lex_all(src_no_closing_brace);
+    assert_eq!(tokens_no_close[0].kind, TokenKind::Error);
+    assert!(
+        matches!(tokens_no_close[0].literal.as_ref().unwrap(), LiteralValue::String(msg) if msg.contains("unexpected character '\"' in \\u{41} sequence"))
+    );
+
+    let src_too_many_digits = "\"\\u{110000}\""; // Max is 10FFFF
+    let tokens_too_many = lex_all(src_too_many_digits);
+    assert_eq!(tokens_too_many[0].kind, TokenKind::Error);
+    // This might be caught as invalid codepoint rather than too many digits if 110000 is parsed first
+    assert!(
+        matches!(tokens_too_many[0].literal.as_ref().unwrap(), LiteralValue::String(msg) if msg.contains("not a valid Unicode codepoint"))
+    );
+
+    let src_invalid_char_in_hex = "\"\\u{4G}\"";
+    let tokens_invalid_hex = lex_all(src_invalid_char_in_hex);
+    assert_eq!(tokens_invalid_hex[0].kind, TokenKind::Error);
+    assert!(
+        matches!(tokens_invalid_hex[0].literal.as_ref().unwrap(), LiteralValue::String(msg) if msg.contains("Invalid Unicode escape"))
+    );
+
+    let src_surrogate = "\"\\u{D800}\""; // Surrogate, invalid
+    let tokens_surrogate = lex_all(src_surrogate);
+    assert_eq!(tokens_surrogate[0].kind, TokenKind::Error);
+    assert!(
+        matches!(tokens_surrogate[0].literal.as_ref().unwrap(), LiteralValue::String(msg) if msg.contains("not a valid Unicode codepoint"))
+    );
+}
+
+#[test]
+fn test_raw_string_literal_simple() {
+    let input = r#"r"hello""#;
+    let tokens = lex_all(input);
+    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens[0].kind, TokenKind::RawStringLiteral);
+    assert_eq!(tokens[0].lexeme, input);
+    assert_eq!(
+        tokens[0].literal,
+        Some(LiteralValue::String("hello".to_string()))
+    );
+}
+
+#[test]
+fn test_raw_string_literal_with_escapes_and_quotes() {
+    let input = "r\"a\\n\\tb\\\\c\""; // raw string: r"a\n\tb\\c"
+    let tokens = lex_all(input);
+    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens[0].kind, TokenKind::RawStringLiteral);
+    assert_eq!(tokens[0].lexeme, input);
+    assert_eq!(
+        tokens[0].literal,
+        Some(LiteralValue::String("a\\n\\tb\\\\c".to_string()))
+    );
+}
+
+#[test]
+fn test_raw_string_literal_empty() {
+    let input = r#"r"""#;
+    let tokens = lex_all(input);
+    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens[0].kind, TokenKind::RawStringLiteral);
+    assert_eq!(tokens[0].lexeme, input);
+    assert_eq!(
+        tokens[0].literal,
+        Some(LiteralValue::String("".to_string()))
+    );
+}
+
+#[test]
+fn test_raw_string_literal_unterminated() {
+    let input = r#"r"hello"#; // Missing closing "
+    let tokens = lex_all(input);
+    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens[0].kind, TokenKind::Error);
+    assert_eq!(tokens[0].lexeme, input);
+    assert!(
+        matches!(tokens[0].literal.as_ref().unwrap(), LiteralValue::String(msg) if msg.contains("Unterminated raw string literal"))
+    );
 }
