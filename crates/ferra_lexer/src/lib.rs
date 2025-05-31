@@ -30,8 +30,9 @@ pub enum TokenKind {
     StringLiteral,
     CharacterLiteral,
     BooleanLiteral,
-    ByteLiteral,      // e.g. b'a', b"foo"
-    RawStringLiteral, // r"..."
+    ByteLiteral,            // e.g. b'a', b"foo"
+    RawStringLiteral,       // r"..." or r#"..."#
+    MultiLineStringLiteral, // """..."""
 
     // Comments (skipped by parser but useful for tooling)
     // LineComment,  // `// ...`
@@ -459,9 +460,16 @@ impl<'a> Lexer<'a> {
                 continue;
             }
 
-            // String Literals: "..."
+            // String Literals: "..." or """..."""
             if ch == '"' {
-                tokens.push(self.lex_string_literal());
+                // Check for triple-quote multiline string
+                if self.peek_nth_char(1).is_some_and(|(_, c)| c == '"')
+                    && self.peek_nth_char(2).is_some_and(|(_, c)| c == '"')
+                {
+                    tokens.push(self.lex_multiline_string_literal(idx));
+                } else {
+                    tokens.push(self.lex_string_literal());
+                }
                 continue;
             }
 
@@ -536,10 +544,14 @@ impl<'a> Lexer<'a> {
                 }
             }
 
-            // Raw String Literals: r"..."
-            if ch == 'r' && self.peek_nth_char(1).is_some_and(|(_, c)| c == '"') {
-                tokens.push(self.lex_raw_string_literal(idx));
-                continue;
+            // Raw String Literals: r"..." or r#"..."#
+            if ch == 'r' {
+                if let Some((_, next_ch)) = self.peek_nth_char(1) {
+                    if next_ch == '"' || next_ch == '#' {
+                        tokens.push(self.lex_raw_string_literal(idx));
+                        continue;
+                    }
+                }
             }
 
             // Identifiers and keywords (Unicode-aware)
@@ -1665,25 +1677,87 @@ impl<'a> Lexer<'a> {
         let start_col = self.column;
 
         self.advance_char(); // consume 'r'
-        self.advance_char(); // consume '"'
 
+        // Count hash characters for delimiter
+        let mut hash_count = 0;
+        while let Some(&(_, ch)) = self.chars.peek() {
+            if ch == '#' {
+                hash_count += 1;
+                self.advance_char();
+            } else {
+                break;
+            }
+        }
+
+        // Expect opening quote
+        if !matches!(self.chars.peek(), Some(&(_, '"'))) {
+            let end_offset = self.current_offset();
+            return Token {
+                kind: TokenKind::Error,
+                lexeme: self
+                    .input
+                    .get(start_idx..end_offset)
+                    .unwrap_or("")
+                    .to_string(),
+                literal: Some(LiteralValue::String(
+                    "Expected '\"' after 'r' and hash characters in raw string literal."
+                        .to_string(),
+                )),
+                span: Span {
+                    start: Position {
+                        line: start_line,
+                        column: start_col,
+                        offset: start_idx,
+                    },
+                    end: Position {
+                        line: self.line,
+                        column: self.column,
+                        offset: end_offset,
+                    },
+                },
+            };
+        }
+
+        self.advance_char(); // consume opening '"'
         let content_start_offset = self.current_offset();
         let mut content = String::new();
         let mut closed = false;
 
         while let Some(&(_i, ch)) = self.chars.peek() {
             if ch == '"' {
-                // Closing quote for raw string
-                // Check if it's followed by another quote (for r""" style, not supported yet)
-                // For r"...", this is the end.
-                self.advance_char(); // consume closing '"'
-                closed = true;
-                break;
+                // Check if followed by the correct number of hashes
+                let mut temp_hash_count = 0;
+                let mut temp_offset = 1;
+
+                while let Some((_, temp_ch)) = self.peek_nth_char(temp_offset) {
+                    if temp_ch == '#' && temp_hash_count < hash_count {
+                        temp_hash_count += 1;
+                        temp_offset += 1;
+                    } else {
+                        break;
+                    }
+                }
+
+                if temp_hash_count == hash_count {
+                    // Found the closing delimiter
+                    self.advance_char(); // consume closing '"'
+                    for _ in 0..hash_count {
+                        self.advance_char(); // consume closing hashes
+                    }
+                    closed = true;
+                    break;
+                } else {
+                    // Not the closing delimiter, treat as content
+                    content.push(ch);
+                    self.advance_char();
+                }
+            } else {
+                // No escape processing for raw strings
+                content.push(ch);
+                self.advance_char();
             }
-            // No escape processing for raw strings
-            content.push(ch);
-            self.advance_char();
         }
+
         let end_offset = self.current_offset();
 
         let span = Span {
@@ -1703,14 +1777,17 @@ impl<'a> Lexer<'a> {
             Token {
                 kind: TokenKind::Error,
                 lexeme: self.input.get(start_idx..end_offset).unwrap_or("").to_string(),
-                literal: Some(LiteralValue::String("Unterminated raw string literal: expected closing quote \" before end of line or file.".to_string())),
+                literal: Some(LiteralValue::String("Unterminated raw string literal: expected closing quote and matching hash characters before end of file.".to_string())),
                 span,
             }
         } else {
-            // Extract the content without the r" and " delimiters
+            // Extract the content without the delimiters
             let actual_content = self
                 .input
-                .get(content_start_offset..(end_offset - '"'.len_utf8()))
+                .get(
+                    content_start_offset
+                        ..(end_offset - '"'.len_utf8() - hash_count * '#'.len_utf8()),
+                )
                 .unwrap_or("");
             Token {
                 kind: TokenKind::RawStringLiteral,
@@ -1829,5 +1906,152 @@ impl<'a> Lexer<'a> {
                 span,
             }
         }
+    }
+
+    fn lex_multiline_string_literal(&mut self, start_idx: usize) -> Token {
+        let start_line = self.line;
+        let start_col = self.column;
+
+        // Consume opening """
+        self.advance_char(); // first "
+        self.advance_char(); // second "
+        self.advance_char(); // third "
+
+        let mut content = String::new();
+        let mut closed = false;
+        let mut lines = Vec::new();
+        let mut current_line = String::new();
+
+        while let Some(&(_idx, ch)) = self.chars.peek() {
+            if ch == '"' {
+                // Check for closing """
+                if self.peek_nth_char(1).is_some_and(|(_, c)| c == '"')
+                    && self.peek_nth_char(2).is_some_and(|(_, c)| c == '"')
+                {
+                    // Found closing delimiter
+                    self.advance_char(); // first "
+                    self.advance_char(); // second "
+                    self.advance_char(); // third "
+                    closed = true;
+                    break;
+                } else {
+                    // Single quote, add to content
+                    current_line.push(ch);
+                    self.advance_char();
+                }
+            } else if ch == '\n' {
+                // End of line
+                lines.push(current_line.clone());
+                current_line.clear();
+                content.push(ch);
+                self.advance_char();
+            } else {
+                // Regular character
+                current_line.push(ch);
+                content.push(ch);
+                self.advance_char();
+            }
+        }
+
+        // Add the last line if not empty
+        if !current_line.is_empty() {
+            lines.push(current_line);
+        }
+
+        let end_offset = self.current_offset();
+        let span = Span {
+            start: Position {
+                line: start_line,
+                column: start_col,
+                offset: start_idx,
+            },
+            end: Position {
+                line: self.line,
+                column: self.column,
+                offset: end_offset,
+            },
+        };
+
+        if !closed {
+            return Token {
+                kind: TokenKind::Error,
+                lexeme: self.input.get(start_idx..end_offset).unwrap_or("").to_string(),
+                literal: Some(LiteralValue::String("Unterminated multiline string literal: expected closing \"\"\" before end of file.".to_string())),
+                span,
+            };
+        }
+
+        // Apply indent stripping algorithm
+        let processed_content = self.strip_common_indentation(&lines);
+
+        Token {
+            kind: TokenKind::MultiLineStringLiteral,
+            lexeme: self
+                .input
+                .get(start_idx..end_offset)
+                .unwrap_or("")
+                .to_string(),
+            literal: Some(LiteralValue::String(processed_content)),
+            span,
+        }
+    }
+
+    // Helper function to strip common indentation from multiline strings
+    fn strip_common_indentation(&self, lines: &[String]) -> String {
+        if lines.is_empty() {
+            return String::new();
+        }
+
+        // Check if first line has content
+        let first_line_has_content = !lines[0].trim().is_empty();
+
+        if first_line_has_content {
+            // If first line has content, don't strip indentation - just join lines
+            return lines.join("\n");
+        }
+
+        // Skip the first line if it's empty (common pattern with """)
+        let start_idx = 1;
+
+        if start_idx >= lines.len() {
+            return String::new();
+        }
+
+        // Find the minimum indentation (ignoring empty lines)
+        let mut min_indent = usize::MAX;
+        for line in &lines[start_idx..] {
+            if !line.trim().is_empty() {
+                let indent = line.len() - line.trim_start().len();
+                min_indent = min_indent.min(indent);
+            }
+        }
+
+        // If no non-empty lines found, return empty
+        if min_indent == usize::MAX {
+            return String::new();
+        }
+
+        // Strip the common indentation
+        let mut result = String::new();
+        let lines_to_process = &lines[start_idx..];
+
+        for (i, line) in lines_to_process.iter().enumerate() {
+            if i > 0 {
+                result.push('\n');
+            }
+
+            if line.trim().is_empty() {
+                // Keep empty lines as empty (but preserve the newline)
+                // Don't add anything for empty lines (the newline is added above)
+            } else if line.len() >= min_indent {
+                // Strip the common indentation
+                result.push_str(&line[min_indent..]);
+            } else {
+                // Line has less indentation than expected, keep as-is
+                result.push_str(line);
+            }
+        }
+
+        result
     }
 }
