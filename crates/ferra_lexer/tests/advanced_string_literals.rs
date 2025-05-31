@@ -103,20 +103,20 @@ fn test_raw_string_invalid_no_quote() {
 #[test]
 fn test_raw_string_no_escapes() {
     // Verify that r"\n" contains literal \ and n, not a newline character
-    let input = r#"r"\n\t\r""#;  // Changed to avoid quote termination issues
+    let input = r#"r"\n\t\r""#; // Changed to avoid quote termination issues
     let tokens = lex_all(input);
-    
+
     assert_eq!(tokens[0].kind, TokenKind::RawStringLiteral);
     // Should contain literal backslashes, not escape sequences
     assert_eq!(
         tokens[0].literal,
         Some(LiteralValue::String("\\n\\t\\r".to_string()))
     );
-    
+
     // Test with hash delimiters to include quotes
     let input2 = r##"r#"\n "quotes" \t\""#"##;
     let tokens2 = lex_all(input2);
-    
+
     assert_eq!(tokens2[0].kind, TokenKind::RawStringLiteral);
     assert_eq!(
         tokens2[0].literal,
@@ -273,12 +273,12 @@ fn test_multiline_string_indentation_interaction() {
     // Test that multiline strings don't interfere with INDENT/DEDENT logic
     let input = "let x = \"\"\"\n    inner content\n    more content\n\"\"\"\nlet y = 5";
     let tokens = lex_all(input);
-    
+
     // Find the tokens we care about
     let mut found_multiline = false;
     let mut found_second_let = false;
     let mut unexpected_indents = 0;
-    
+
     for token in tokens.iter() {
         match &token.kind {
             TokenKind::MultiLineStringLiteral => {
@@ -286,23 +286,28 @@ fn test_multiline_string_indentation_interaction() {
                 // Verify the content is properly processed
                 assert_eq!(
                     token.literal,
-                    Some(LiteralValue::String("inner content\nmore content".to_string()))
+                    Some(LiteralValue::String(
+                        "inner content\nmore content".to_string()
+                    ))
                 );
-            },
+            }
             TokenKind::Let if found_multiline && !found_second_let => {
                 found_second_let = true;
                 // Should be the second 'let' statement
-            },
+            }
             TokenKind::Indent | TokenKind::Dedent => {
                 // There should be no INDENT/DEDENT tokens in this example
                 // because the multiline string content doesn't affect the main indentation level
                 unexpected_indents += 1;
-            },
+            }
             _ => {}
         }
     }
-    
+
     assert!(found_multiline, "Should find multiline string");
     assert!(found_second_let, "Should find second let statement");
-    assert_eq!(unexpected_indents, 0, "Should not have any INDENT/DEDENT tokens in this flat structure");
+    assert_eq!(
+        unexpected_indents, 0,
+        "Should not have any INDENT/DEDENT tokens in this flat structure"
+    );
 }

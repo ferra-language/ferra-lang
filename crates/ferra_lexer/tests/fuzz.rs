@@ -6,7 +6,7 @@ proptest! {
     fn lexer_never_panics_on_random_input(s in ".{0,512}") {
         let _ = Lexer::new(&s).lex();
     }
-    
+
     #[test]
     fn lexer_handles_raw_string_fuzzing(
         hash_count in 0usize..=5,
@@ -21,11 +21,11 @@ proptest! {
         } else {
             format!("r{}\"{}\"{}\"", hashes, content, hashes)
         };
-        
+
         // Should never panic, regardless of input
         let _ = Lexer::new(&input).lex();
     }
-    
+
     #[test]
     fn lexer_handles_multiline_string_fuzzing(
         content in "[^\"]{0,100}",
@@ -37,13 +37,13 @@ proptest! {
         } else {
             content
         };
-        
+
         let input = if malformed {
             format!("\"\"\"{}\"", inner_content) // Missing closing quotes
         } else {
             format!("\"\"\"{}\"\"\"", inner_content)
         };
-        
+
         // Should never panic
         let _ = Lexer::new(&input).lex();
     }
