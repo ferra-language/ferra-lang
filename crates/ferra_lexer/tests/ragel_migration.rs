@@ -9,7 +9,7 @@ fn test_ragel_compatibility_basic_tokens() {
     // Test basic token recognition that Ragel should handle identically
     let src = "let x = 42 + 3.14;";
     let tokens = Lexer::new(src).lex();
-    
+
     let expected_kinds = [
         TokenKind::Let,
         TokenKind::Identifier,
@@ -20,7 +20,7 @@ fn test_ragel_compatibility_basic_tokens() {
         TokenKind::Semicolon,
         TokenKind::Eof,
     ];
-    
+
     let actual_kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
     assert_eq!(actual_kinds, expected_kinds.iter().collect::<Vec<_>>());
 }
@@ -30,7 +30,7 @@ fn test_ragel_compatibility_complex_operators() {
     // Test multi-character operators that Ragel DFA should handle efficiently
     let src = "x += y << z >> w && a || b ?? c";
     let tokens = Lexer::new(src).lex();
-    
+
     let expected_kinds = [
         TokenKind::Identifier, // x
         TokenKind::PlusEqual,  // +=
@@ -47,7 +47,7 @@ fn test_ragel_compatibility_complex_operators() {
         TokenKind::Identifier, // c
         TokenKind::Eof,
     ];
-    
+
     let actual_kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
     assert_eq!(actual_kinds, expected_kinds.iter().collect::<Vec<_>>());
 }
@@ -75,7 +75,7 @@ fn test_ragel_compatibility_indentation_handling() {
     // Test indentation token generation for Ragel compatibility
     let src = "a\n    b\n        c\n    d\ne";
     let tokens = Lexer::new(src).lex();
-    
+
     let expected_kinds = [
         TokenKind::Identifier, // a
         TokenKind::Newline,
@@ -92,7 +92,7 @@ fn test_ragel_compatibility_indentation_handling() {
         TokenKind::Identifier, // e
         TokenKind::Eof,
     ];
-    
+
     let actual_kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
     assert_eq!(actual_kinds, expected_kinds.iter().collect::<Vec<_>>());
 }
@@ -118,7 +118,7 @@ fn test_ragel_compatibility_numeric_literals() {
     // Test numeric literal parsing for Ragel compatibility
     let src = "42 0x1A 0o77 0b1010 3.14 1e10 1_000_000";
     let tokens = Lexer::new(src).lex();
-    
+
     let expected_kinds = [
         TokenKind::IntegerLiteral, // 42
         TokenKind::IntegerLiteral, // 0x1A
@@ -129,7 +129,7 @@ fn test_ragel_compatibility_numeric_literals() {
         TokenKind::IntegerLiteral, // 1_000_000
         TokenKind::Eof,
     ];
-    
+
     let actual_kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
     assert_eq!(actual_kinds, expected_kinds.iter().collect::<Vec<_>>());
 }
@@ -139,7 +139,7 @@ fn test_ragel_compatibility_comments() {
     // Test comment handling for Ragel compatibility
     let src = "let x = 5; // line comment\nlet y = /* block */ 10;";
     let tokens = Lexer::new(src).lex();
-    
+
     // Comments should be consumed, not emitted as tokens
     let expected_kinds = [
         TokenKind::Let,
@@ -155,7 +155,7 @@ fn test_ragel_compatibility_comments() {
         TokenKind::Semicolon,
         TokenKind::Eof,
     ];
-    
+
     let actual_kinds: Vec<_> = tokens.iter().map(|t| &t.kind).collect();
     assert_eq!(actual_kinds, expected_kinds.iter().collect::<Vec<_>>());
 }
