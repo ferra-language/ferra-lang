@@ -39,7 +39,7 @@ fn convert_token(token: Token) -> TokenType {
         },
         TokenKind::FloatLiteral => match token.literal {
             Some(ferra_lexer::LiteralValue::Float(f)) => TokenType::FloatLiteral(f),
-            _ => TokenType::FloatLiteral(3.14),
+            _ => TokenType::FloatLiteral(1.0),
         },
         TokenKind::StringLiteral => match token.literal {
             Some(ferra_lexer::LiteralValue::String(s)) => TokenType::StringLiteral(s),
@@ -472,7 +472,7 @@ fn test_performance_stress() {
         }
     "#;
 
-    let result = parse_source(&source);
+    let result = parse_source(source);
     // Should handle reasonable nesting without issues
     assert!(
         result.is_ok(),
