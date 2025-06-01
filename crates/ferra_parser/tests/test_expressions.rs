@@ -436,8 +436,10 @@ fn test_boolean_literals() {
 fn test_float_literals() {
     let arena = Arena::new();
 
-    let tokens =
-        VecTokenStream::from_token_types(vec![TokenType::FloatLiteral(std::f64::consts::PI), TokenType::Eof]);
+    let tokens = VecTokenStream::from_token_types(vec![
+        TokenType::FloatLiteral(std::f64::consts::PI),
+        TokenType::Eof,
+    ]);
     let mut parser = PrattParser::new(&arena, tokens);
 
     let result = parser.parse_expression(0);
