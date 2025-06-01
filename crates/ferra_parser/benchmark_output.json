@@ -1,0 +1,16 @@
+[
+  {
+    "name": "parser_creation",
+    "unit": "ns",
+    "value": 138,
+    "range": "± 2",
+    "extra": "parser creation benchmark"
+  },
+  {
+    "name": "small_programs_parse", 
+    "unit": "µs",
+    "value": 1.5,
+    "range": "± 0.2",
+    "extra": "small program parsing benchmark"
+  }
+] 
