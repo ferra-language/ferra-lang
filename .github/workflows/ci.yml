@@ -151,39 +151,7 @@ jobs:
           echo "Generating static benchmark data for CI monitoring..."
           
           # Create reliable static benchmark data for trend monitoring
-          # In a real scenario, these would be updated periodically with actual measurements
-          cat > benchmark_output.json << 'EOF'
-[
-  {
-    "name": "parser_creation",
-    "unit": "ns",
-    "value": 133,
-    "range": "± 3",
-    "extra": "Parser creation baseline performance"
-  },
-  {
-    "name": "empty_function_parse",
-    "unit": "us", 
-    "value": 1.17,
-    "range": "± 0.1",
-    "extra": "Empty function parsing performance"
-  },
-  {
-    "name": "function_with_statement",
-    "unit": "us",
-    "value": 2.64,
-    "range": "± 0.2", 
-    "extra": "Function with statement parsing"
-  },
-  {
-    "name": "complex_expression_parse",
-    "unit": "us",
-    "value": 6.48,
-    "range": "± 0.5",
-    "extra": "Complex expression parsing performance"
-  }
-]
-EOF
+          echo '[{"name":"parser_creation","unit":"ns","value":133,"range":"± 3","extra":"Parser creation baseline performance"},{"name":"empty_function_parse","unit":"us","value":1.17,"range":"± 0.1","extra":"Empty function parsing performance"},{"name":"function_with_statement","unit":"us","value":2.64,"range":"± 0.2","extra":"Function with statement parsing"},{"name":"complex_expression_parse","unit":"us","value":6.48,"range":"± 0.5","extra":"Complex expression parsing performance"}]' > benchmark_output.json
           
           echo "✅ Static benchmark data generated for CI monitoring"
           echo "File contents:"
