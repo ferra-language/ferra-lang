@@ -22,8 +22,7 @@ fn test_block_style_detection() {
     let stream = VecTokenStream::from_token_types(brace_tokens);
     let _parser = Parser::new(&arena, stream);
 
-    // Test that we can detect brace-style blocks
-    assert!(true);
+    // Test that we can create a parser for brace-style blocks
 }
 
 #[test]
@@ -39,7 +38,7 @@ fn test_indentation_error_detection() {
             found_level: 2,
             ..
         } => {
-            assert!(true);
+            // Successfully created the error type
         }
         _ => panic!("Expected inconsistent indentation error"),
     }
@@ -53,7 +52,9 @@ fn test_mixed_block_styles_error() {
     let error = ParseError::mixed_block_styles(span);
 
     match error {
-        ParseError::MixedBlockStyles { .. } => assert!(true),
+        ParseError::MixedBlockStyles { .. } => {
+            // Successfully created the error type
+        }
         _ => panic!("Expected mixed block styles error"),
     }
 }
@@ -73,8 +74,7 @@ fn test_indented_block_tokens() {
     let stream = VecTokenStream::from_token_types(tokens);
     assert!(!stream.is_at_end());
 
-    // Verify token sequence for indented blocks
-    assert!(true);
+    // Verify token sequence for indented blocks - stream is not empty
 }
 
 #[test]
@@ -94,8 +94,7 @@ fn test_nested_block_structure() {
     let stream = VecTokenStream::from_token_types(tokens);
     let _parser = Parser::new(&arena, stream);
 
-    // Verify token sequence for nested braced blocks
-    assert!(true);
+    // Test that we can create a parser for nested braced blocks
 }
 
 #[test]
@@ -107,8 +106,7 @@ fn test_parser_basic_functionality() {
     // Test that we can create a parser
     let _parser = Parser::new(&arena, stream);
 
-    // Verify basic functionality
-    assert!(true);
+    // Verify basic functionality - parser should be created successfully
 }
 
 #[test]
@@ -121,7 +119,6 @@ fn test_brace_blocks() {
 
     // This test just verifies the BlockParser exists and can be created
     // More comprehensive tests are in test_phase_2_4_blocks.rs
-    assert!(true);
 }
 
 #[test]
@@ -134,7 +131,6 @@ fn test_indented_blocks() {
 
     // This test just verifies the BlockParser exists and can be created
     // More comprehensive tests are in test_phase_2_4_blocks.rs
-    assert!(true);
 }
 
 #[test]
@@ -159,5 +155,4 @@ fn test_nested_blocks() {
 
     // This test just verifies the BlockParser exists and can be created
     // More comprehensive tests are in test_phase_2_4_blocks.rs
-    assert!(true);
 }

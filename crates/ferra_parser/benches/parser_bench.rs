@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use ferra_parser::{
+    ast::Arena,
     token::{TokenType, VecTokenStream},
     Parser,
 };
@@ -22,6 +23,7 @@ fn benchmark_token_stream_creation(c: &mut Criterion) {
 
 fn benchmark_parser_creation(c: &mut Criterion) {
     c.bench_function("parser_creation", |b| {
+        let arena = Arena::new();
         b.iter(|| {
             let tokens = vec![
                 TokenType::Let,
@@ -31,7 +33,7 @@ fn benchmark_parser_creation(c: &mut Criterion) {
                 TokenType::Eof,
             ];
             let stream = VecTokenStream::from_token_types(tokens);
-            black_box(Parser::new(stream))
+            black_box(Parser::new(&arena, stream))
         })
     });
 }

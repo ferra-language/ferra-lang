@@ -437,16 +437,17 @@ fn test_float_literals() {
     let arena = Arena::new();
 
     let tokens =
-        VecTokenStream::from_token_types(vec![TokenType::FloatLiteral(3.14), TokenType::Eof]);
+        VecTokenStream::from_token_types(vec![TokenType::FloatLiteral(std::f64::consts::PI), TokenType::Eof]);
     let mut parser = PrattParser::new(&arena, tokens);
 
     let result = parser.parse_expression(0);
-    assert!(result.is_ok());
 
+    assert!(result.is_ok());
     if let Ok(expr) = result {
         match expr {
             Expression::Literal(Literal::Float(value)) => {
-                assert!((value - 3.14).abs() < f64::EPSILON);
+                // Use an appropriate tolerance for floating point comparison
+                assert!((*value - std::f64::consts::PI).abs() < f64::EPSILON);
             }
             _ => panic!("Expected float literal"),
         }

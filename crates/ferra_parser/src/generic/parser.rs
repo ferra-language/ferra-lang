@@ -352,7 +352,7 @@ mod tests {
     use crate::token::stream::VecTokenStream;
 
     fn create_token_stream(token_types: Vec<TokenType>) -> VecTokenStream {
-        let tokens = token_types.into_iter().map(|t| Token::dummy(t)).collect();
+        let tokens = token_types.into_iter().map(Token::dummy).collect();
         VecTokenStream::new(tokens)
     }
 

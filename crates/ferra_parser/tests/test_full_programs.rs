@@ -38,8 +38,7 @@ fn test_simple_program_tokens() {
     let stream = VecTokenStream::from_token_types(tokens);
     let _parser = Parser::new(&arena, stream);
 
-    // Verify token sequence for simple program
-    assert!(true);
+    // Test that we can create a parser for simple program tokens
 }
 
 #[test]
@@ -63,8 +62,7 @@ fn test_program_with_data_class_tokens() {
     let stream = VecTokenStream::from_token_types(tokens);
     let _parser = Parser::new(&arena, stream);
 
-    // Verify token sequence for data class
-    assert!(true);
+    // Test that we can create a parser for data class tokens
 }
 
 #[test]
@@ -91,8 +89,7 @@ fn test_extern_block_tokens() {
     let stream = VecTokenStream::from_token_types(tokens);
     let _parser = Parser::new(&arena, stream);
 
-    // Verify token sequence for extern block
-    assert!(true);
+    // Test that we can create a parser for extern block tokens
 }
 
 // Phase 2.6: Integration Testing - Full program parsing tests
