@@ -94,8 +94,9 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
             TokenType::Pub => self.parse_public_item(),
             TokenType::Unsafe => self.parse_unsafe_item(),
             TokenType::Static => self.parse_static_variable(),
+            TokenType::Let | TokenType::Var => self.parse_variable_declaration(),
             _ => Err(ParseError::unexpected_token(
-                "function, data class, extern block, or other top-level declaration",
+                "function, data class, extern block, variable declaration, or other top-level declaration",
                 current,
             )),
         }
@@ -221,8 +222,43 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         // Consume 'pub' keyword
         self.consume();
 
-        // Parse the next item with pub modifier
-        self.parse_top_level_item()
+        // Check what kind of item follows
+        let current = self.tokens.peek();
+        match current.token_type {
+            TokenType::Fn => self.parse_function_declaration_with_modifiers(Modifiers {
+                is_public: true,
+                is_unsafe: false,
+            }),
+            TokenType::Let | TokenType::Var => {
+                self.parse_variable_declaration_with_modifiers(Modifiers {
+                    is_public: true,
+                    is_unsafe: false,
+                })
+            }
+            TokenType::Data => self.parse_data_class_declaration_with_modifiers(Modifiers {
+                is_public: true,
+                is_unsafe: false,
+            }),
+            TokenType::Unsafe => {
+                // Handle pub unsafe combination
+                self.consume(); // consume 'unsafe'
+                let inner_token = self.tokens.peek();
+                match inner_token.token_type {
+                    TokenType::Fn => self.parse_function_declaration_with_modifiers(Modifiers {
+                        is_public: true,
+                        is_unsafe: true,
+                    }),
+                    _ => Err(ParseError::unexpected_token(
+                        "fn after pub unsafe",
+                        inner_token,
+                    )),
+                }
+            }
+            _ => Err(ParseError::unexpected_token(
+                "fn, let, var, data, or unsafe after pub",
+                current,
+            )),
+        }
     }
 
     /// Parse an unsafe item
@@ -230,8 +266,15 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         // Consume 'unsafe' keyword
         self.consume();
 
-        // Parse the next item with unsafe modifier
-        self.parse_top_level_item()
+        // Check what kind of item follows
+        let current = self.tokens.peek();
+        match current.token_type {
+            TokenType::Fn => self.parse_function_declaration_with_modifiers(Modifiers {
+                is_public: false,
+                is_unsafe: true,
+            }),
+            _ => Err(ParseError::unexpected_token("fn after unsafe", current)),
+        }
     }
 
     /// Parse a static variable declaration
@@ -239,6 +282,196 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         // For now, delegate to StatementParser for static variables
         let mut statement_parser = StatementParser::new(self.arena, self.tokens.clone());
         statement_parser.parse_item()
+    }
+
+    /// Parse a variable declaration (let/var)
+    fn parse_variable_declaration(&mut self) -> Result<&'arena Item, ParseError> {
+        let start_span = self.current_span();
+
+        // Consume let/var
+        let var_token = self.consume();
+        let is_mutable = matches!(var_token.token_type, TokenType::Var);
+
+        // Variable name
+        let name_token = self.consume();
+        let name = match name_token.token_type {
+            TokenType::Identifier(name) => name,
+            _ => return Err(ParseError::unexpected_token("variable name", &name_token)),
+        };
+
+        // Optional type annotation
+        let var_type = if matches!(self.tokens.peek().token_type, TokenType::Colon) {
+            self.consume(); // consume ':'
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        // Optional initializer
+        let initializer = if matches!(self.tokens.peek().token_type, TokenType::Equal) {
+            self.consume(); // consume '='
+                            // For now, parse a simple expression (identifier or literal)
+            let expr_token = self.consume();
+            match expr_token.token_type {
+                TokenType::IntegerLiteral(i) => Some(crate::ast::Expression::Literal(
+                    crate::ast::Literal::Integer(i),
+                )),
+                TokenType::BooleanLiteral(b) => Some(crate::ast::Expression::Literal(
+                    crate::ast::Literal::Boolean(b),
+                )),
+                TokenType::Identifier(name) => Some(crate::ast::Expression::Identifier(name)),
+                _ => return Err(ParseError::unexpected_token("expression", &expr_token)),
+            }
+        } else {
+            None
+        };
+
+        // Consume optional semicolon
+        if matches!(self.tokens.peek().token_type, TokenType::Semicolon) {
+            self.consume();
+        }
+
+        let var_decl = crate::ast::VariableDecl {
+            name,
+            var_type,
+            initializer,
+            is_mutable,
+            modifiers: crate::ast::Modifiers {
+                is_public: false,
+                is_unsafe: false,
+            },
+            attributes: Vec::new(),
+            span: start_span,
+        };
+
+        Ok(self.arena.alloc(crate::ast::Item::VariableDecl(var_decl)))
+    }
+
+    /// Parse a variable declaration with modifiers (let/var)
+    fn parse_variable_declaration_with_modifiers(
+        &mut self,
+        modifiers: Modifiers,
+    ) -> Result<&'arena Item, ParseError> {
+        let start_span = self.current_span();
+
+        // Consume let/var
+        let var_token = self.consume();
+        let is_mutable = matches!(var_token.token_type, TokenType::Var);
+
+        // Variable name
+        let name_token = self.consume();
+        let name = match name_token.token_type {
+            TokenType::Identifier(name) => name,
+            _ => return Err(ParseError::unexpected_token("variable name", &name_token)),
+        };
+
+        // Optional type annotation
+        let var_type = if matches!(self.tokens.peek().token_type, TokenType::Colon) {
+            self.consume(); // consume ':'
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        // Optional initializer
+        let initializer = if matches!(self.tokens.peek().token_type, TokenType::Equal) {
+            self.consume(); // consume '='
+                            // For now, parse a simple expression (identifier or literal)
+            let expr_token = self.consume();
+            match expr_token.token_type {
+                TokenType::IntegerLiteral(i) => Some(crate::ast::Expression::Literal(
+                    crate::ast::Literal::Integer(i),
+                )),
+                TokenType::BooleanLiteral(b) => Some(crate::ast::Expression::Literal(
+                    crate::ast::Literal::Boolean(b),
+                )),
+                TokenType::Identifier(name) => Some(crate::ast::Expression::Identifier(name)),
+                _ => return Err(ParseError::unexpected_token("expression", &expr_token)),
+            }
+        } else {
+            None
+        };
+
+        // Consume optional semicolon
+        if matches!(self.tokens.peek().token_type, TokenType::Semicolon) {
+            self.consume();
+        }
+
+        let var_decl = crate::ast::VariableDecl {
+            name,
+            var_type,
+            initializer,
+            is_mutable,
+            modifiers,
+            attributes: Vec::new(),
+            span: start_span,
+        };
+
+        Ok(self.arena.alloc(crate::ast::Item::VariableDecl(var_decl)))
+    }
+
+    /// Parse a function declaration with modifiers
+    fn parse_function_declaration_with_modifiers(
+        &mut self,
+        modifiers: Modifiers,
+    ) -> Result<&'arena Item, ParseError> {
+        let start_span = self.current_span();
+
+        // Consume 'fn'
+        let fn_token = self.consume();
+        if !matches!(fn_token.token_type, TokenType::Fn) {
+            return Err(ParseError::unexpected_token("'fn'", &fn_token));
+        }
+
+        // Function name
+        let name_token = self.consume();
+        let name = match name_token.token_type {
+            TokenType::Identifier(name) => name,
+            _ => return Err(ParseError::unexpected_token("function name", &name_token)),
+        };
+
+        // Parameters
+        let parameters = self.parse_parameter_list()?;
+
+        // Return type
+        let return_type = if matches!(self.tokens.peek().token_type, TokenType::Arrow) {
+            self.consume(); // consume '->'
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        // Body
+        let body = if matches!(self.tokens.peek().token_type, TokenType::LeftBrace) {
+            Some(self.parse_block()?)
+        } else {
+            None
+        };
+
+        let func_decl = FunctionDecl {
+            name,
+            generics: None,
+            parameters,
+            return_type,
+            body,
+            is_async: false,
+            is_extern: false,
+            abi: None,
+            modifiers,
+            attributes: Vec::new(),
+            span: start_span,
+        };
+
+        Ok(self.arena.alloc(Item::FunctionDecl(func_decl)))
+    }
+
+    /// Parse a data class declaration with modifiers
+    fn parse_data_class_declaration_with_modifiers(
+        &mut self,
+        _modifiers: Modifiers,
+    ) -> Result<&'arena Item, ParseError> {
+        // For now, just call the existing method
+        self.parse_data_class_declaration()
     }
 
     /// Parse parameter list for functions

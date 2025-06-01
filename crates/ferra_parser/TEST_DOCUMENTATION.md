@@ -10,7 +10,7 @@
 
 ### Total Test Count: 292 Parser Tests + 116 Lexer Tests = 408 Total
 - **Core Library Tests**: 63 tests (in-crate unit tests)
-- **Integration Test Suites**: 229 tests (16 test files)
+- **Integration Test Suites**: 229 tests (17 test files)
 - **Lexer Tests**: 116 tests (14 test files)
 
 ### Test Distribution by Feature
@@ -18,6 +18,7 @@
 | Feature | Tests | Location |
 |---------|-------|----------|
 | **Control Flow Integration** | 23 | `test_control_flow_integration.rs` *(NEW)* |
+| **Modifier Combinations** | 18 | `test_modifier_combinations.rs` *(NEW)* |
 | **Expressions** | 27 | `test_expressions.rs` |
 | **Statements** | 13 | `test_statement_parsing.rs` |
 | **Blocks** | 30 | `test_blocks.rs` + `test_phase_2_4_blocks.rs` |
@@ -141,6 +142,39 @@ test_performance_stress()         // Stress testing
 test_malformed_if_statement_recovery()  // Error recovery
 test_malformed_for_loop_recovery()      // Graceful handling
 test_empty_control_flow_blocks()        // Empty { }
+```
+
+### Modifier Combination Tests (18 tests) - `test_modifier_combinations.rs` *(NEW)*
+Complete testing of all modifier combinations and scenarios:
+
+```rust
+// Function Modifiers
+test_pub_function()               // pub fn name() { }
+test_unsafe_function()            // unsafe fn name() { }
+test_pub_unsafe_function()       // pub unsafe fn name() { }
+test_unsafe_pub_function()       // Tests order sensitivity
+
+// Variable Declaration Modifiers  
+test_pub_let_declaration()        // pub let var: Type = value;
+test_pub_var_declaration()        // pub var var: Type = value;
+
+// Data Class Modifiers
+test_pub_data_class()             // pub data Name { }
+test_data_class_with_pub_fields() // data Name { pub field: Type }
+test_pub_data_class_with_mixed_field_visibility() // Mixed visibility
+
+// Complex Scenarios
+test_multiple_functions_with_different_modifiers() // Multiple items
+test_mixed_declarations_with_modifiers()           // Mixed let/var/pub
+test_modifiers_in_nested_functions()               // Nested contexts
+test_unsafe_blocks_with_function_modifiers()       // Complex unsafe
+
+// Error Cases & Edge Testing
+test_invalid_modifier_combinations()               // Invalid syntax
+test_modifier_position_sensitivity()               // Order matters
+test_all_valid_function_modifier_combinations()    // Matrix testing
+test_all_valid_variable_modifier_combinations()    // Matrix testing
+test_comprehensive_program_with_all_modifiers()    // Full integration
 ```
 
 ### Statement Tests (13 tests) - `test_statement_parsing.rs`

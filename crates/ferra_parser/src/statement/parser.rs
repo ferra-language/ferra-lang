@@ -260,6 +260,11 @@ impl<'arena, T: TokenStream> StatementParser<'arena, T> {
             None
         };
 
+        // Consume optional semicolon
+        if matches!(self.peek().token_type, TokenType::Semicolon) {
+            self.consume();
+        }
+
         Ok(VariableDecl {
             name,
             var_type,

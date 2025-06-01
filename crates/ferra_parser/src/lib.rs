@@ -13,15 +13,27 @@
 //!
 //! ## Usage
 //!
-//! ```rust,ignore
-//! use ferra_parser::{Parser, parse_file};
+//! ```rust
+//! use ferra_parser::{Arena, ProgramParser};
+//! use ferra_parser::token::{VecTokenStream, TokenType};
 //!
-//! // Parse a complete file
-//! let ast = parse_file("example.ferra")?;
+//! // Create arena for AST allocation
+//! let arena = Arena::new();
 //!
-//! // Parse from token stream
-//! let mut parser = Parser::new(token_stream);
-//! let ast = parser.parse_compilation_unit()?;
+//! // Create token stream (normally from lexer)
+//! let tokens = VecTokenStream::from_token_types(vec![
+//!     TokenType::Fn,
+//!     TokenType::Identifier("test".to_string()),
+//!     TokenType::LeftParen,
+//!     TokenType::RightParen,
+//!     TokenType::LeftBrace,
+//!     TokenType::RightBrace,
+//!     TokenType::Eof,
+//! ]);
+//!
+//! // Parse the program
+//! let mut parser = ProgramParser::new(&arena, tokens);
+//! let ast = parser.parse_compilation_unit();
 //! ```
 
 pub mod ast;
