@@ -14,7 +14,7 @@ use crate::{
 pub struct ProgramParser<'arena, T: TokenStream + Clone> {
     arena: &'arena Arena,
     tokens: T,
-    error_collector: ErrorCollector,
+    error_collector: Option<ErrorCollector>, // Lazy initialization
 }
 
 #[allow(dead_code)] // Legacy methods kept for compatibility
@@ -24,31 +24,71 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         Self {
             arena,
             tokens,
-            error_collector: ErrorCollector::new(50),
+            error_collector: None, // Lazy initialization for better creation performance
         }
+    }
+
+    /// Get or initialize the error collector (lazy initialization)
+    #[inline]
+    fn error_collector(&mut self) -> &mut ErrorCollector {
+        if self.error_collector.is_none() {
+            self.error_collector = Some(ErrorCollector::new(50));
+        }
+        self.error_collector.as_mut().unwrap()
+    }
+
+    /// Check if any errors have been collected
+    pub fn has_errors(&mut self) -> bool {
+        self.error_collector
+            .as_ref()
+            .map_or(false, |ec| ec.has_errors())
+    }
+
+    /// Get all collected errors
+    pub fn get_errors(&mut self) -> Vec<ParseError> {
+        self.error_collector()
+            .get_errors()
+            .to_vec()
     }
 
     /// Parse a complete compilation unit (top-level program)
     pub fn parse_compilation_unit(&mut self) -> Result<&'arena CompilationUnit, Vec<ParseError>> {
         let start_span = self.current_span();
-        let mut items = Vec::new();
+        
+        // Fast path for empty programs
+        if self.tokens.is_at_end() {
+            let compilation_unit = self.arena.alloc(CompilationUnit { 
+                items: Vec::new(), 
+                span: start_span 
+            });
+            return Ok(compilation_unit);
+        }
+        
+        // Pre-allocate items vector with reasonable capacity
+        let mut items = Vec::with_capacity(8);
 
         // Parse top-level items until EOF
         while !self.tokens.is_at_end() {
             match self.parse_top_level_item() {
                 Ok(item) => items.push(item.clone()),
                 Err(error) => {
-                    self.error_collector.add_error(error);
+                    // Initialize error collector if not already done
+                    if self.error_collector.is_none() {
+                        self.error_collector = Some(ErrorCollector::new(50));
+                    }
+                    
+                    // Add error and try recovery
+                    self.error_collector.as_mut().unwrap().add_error(error);
 
                     // Try to recover to next top-level item using improved error recovery
                     use crate::error::recovery::ErrorRecovery;
-                    if ErrorRecovery::smart_recovery(
+                    let recovery_result = ErrorRecovery::smart_recovery(
                         &mut self.tokens,
                         "declaration",
-                        &mut self.error_collector,
-                    )
-                    .is_some()
-                    {
+                        self.error_collector.as_mut().unwrap(),
+                    );
+                    
+                    if recovery_result.is_some() {
                         continue;
                     } else {
                         // Can't recover, stop parsing
@@ -61,8 +101,8 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         let end_span = self.current_span();
         let span = start_span.combine(end_span);
 
-        if self.error_collector.has_errors() {
-            Err(self.error_collector.get_errors().to_vec())
+        if self.has_errors() {
+            Err(self.get_errors())
         } else {
             let compilation_unit = self.arena.alloc(CompilationUnit { items, span });
             Ok(compilation_unit)
@@ -933,23 +973,15 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
     }
 
     /// Get current span from token stream
+    #[inline]
     fn current_span(&self) -> Span {
         self.tokens.peek().span.clone()
     }
 
     /// Consume next token
+    #[inline]
     fn consume(&mut self) -> Token {
         self.tokens.consume()
-    }
-
-    /// Get all parsing errors
-    pub fn get_errors(&self) -> &[ParseError] {
-        self.error_collector.get_errors()
-    }
-
-    /// Check if there are any parsing errors
-    pub fn has_errors(&self) -> bool {
-        self.error_collector.has_errors()
     }
 
     /// Parse optional attributes

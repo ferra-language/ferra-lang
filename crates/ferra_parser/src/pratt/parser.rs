@@ -28,6 +28,7 @@ impl<'arena, T: TokenStream> PrattParser<'arena, T> {
     }
 
     /// Parse an expression with the given minimum binding power
+    #[inline]
     pub fn parse_expression(
         &mut self,
         min_bp: BindingPower,
@@ -143,19 +144,20 @@ impl<'arena, T: TokenStream> PrattParser<'arena, T> {
         }
     }
 
+    #[inline]
     fn handle_led(
         &mut self,
         left: &'arena Expression,
         token: &Token,
     ) -> Result<&'arena Expression, ParseError> {
         match &token.token_type {
-            // Binary operators
+            // Binary operators - batch the most common ones first
             TokenType::Plus => self.parse_binary_expression(left, BinaryOperator::Add, token),
-            TokenType::Minus => self.parse_binary_expression(left, BinaryOperator::Sub, token),
             TokenType::Star => self.parse_binary_expression(left, BinaryOperator::Mul, token),
+            TokenType::Minus => self.parse_binary_expression(left, BinaryOperator::Sub, token),
             TokenType::Slash => self.parse_binary_expression(left, BinaryOperator::Div, token),
-            TokenType::Percent => self.parse_binary_expression(left, BinaryOperator::Mod, token),
-
+            TokenType::Equal => self.parse_binary_expression(left, BinaryOperator::Assign, token),
+            
             // Comparison operators
             TokenType::EqualEqual => {
                 self.parse_binary_expression(left, BinaryOperator::Equal, token)
@@ -164,22 +166,20 @@ impl<'arena, T: TokenStream> PrattParser<'arena, T> {
                 self.parse_binary_expression(left, BinaryOperator::NotEqual, token)
             }
             TokenType::Less => self.parse_binary_expression(left, BinaryOperator::Less, token),
-            TokenType::LessEqual => {
-                self.parse_binary_expression(left, BinaryOperator::LessEqual, token)
-            }
             TokenType::Greater => {
                 self.parse_binary_expression(left, BinaryOperator::Greater, token)
+            }
+            
+            // Less common operators
+            TokenType::Percent => self.parse_binary_expression(left, BinaryOperator::Mod, token),
+            TokenType::LessEqual => {
+                self.parse_binary_expression(left, BinaryOperator::LessEqual, token)
             }
             TokenType::GreaterEqual => {
                 self.parse_binary_expression(left, BinaryOperator::GreaterEqual, token)
             }
-
-            // Logical operators
             TokenType::AmpAmp => self.parse_binary_expression(left, BinaryOperator::And, token),
             TokenType::PipePipe => self.parse_binary_expression(left, BinaryOperator::Or, token),
-
-            // Assignment operators
-            TokenType::Equal => self.parse_binary_expression(left, BinaryOperator::Assign, token),
 
             // Postfix operators
             TokenType::Dot => self.parse_member_access(left, token),
@@ -191,13 +191,14 @@ impl<'arena, T: TokenStream> PrattParser<'arena, T> {
         }
     }
 
+    #[inline]
     fn parse_binary_expression(
         &mut self,
         left: &'arena Expression,
         operator: BinaryOperator,
         token: &Token,
     ) -> Result<&'arena Expression, ParseError> {
-        // Get the precedence for this operator
+        // Get the precedence for this operator (should exist since we matched it)
         let op_info = infix_binding_power(&token.token_type)
             .ok_or_else(|| ParseError::unexpected_token("binary operator", token))?;
 

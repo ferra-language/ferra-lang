@@ -274,7 +274,7 @@ impl ErrorCollector {
     /// Create a new error collector
     pub fn new(max_errors: usize) -> Self {
         Self {
-            errors: Vec::new(),
+            errors: Vec::with_capacity(max_errors.min(16)), // Pre-allocate with reasonable capacity
             max_errors,
             continue_on_error: true,
         }
