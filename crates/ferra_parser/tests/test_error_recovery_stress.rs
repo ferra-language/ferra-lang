@@ -6,6 +6,7 @@ use ferra_parser::{
 use std::time::{Duration, Instant};
 
 /// Generate tokens with errors for stress testing
+#[allow(dead_code)]
 fn create_error_tokens(scenario: &str) -> Vec<TokenType> {
     match scenario {
         "missing_semicolon" => vec![
@@ -118,6 +119,7 @@ fn generate_error_cascade_tokens(func_count: usize) -> Vec<TokenType> {
     tokens
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct ErrorRecoveryStressResult {
     test_name: String,

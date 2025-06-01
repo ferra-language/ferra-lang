@@ -46,6 +46,7 @@ pub struct MemoryStats {
 }
 
 /// Generate simple tokens for testing
+#[allow(dead_code)]
 fn create_test_tokens() -> Vec<TokenType> {
     vec![
         TokenType::Fn,
