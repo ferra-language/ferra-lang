@@ -304,8 +304,14 @@ impl<'arena> BlockParser<'arena> {
                     }
                 }
                 // Statement keywords should terminate expression parsing
-                TokenType::Let | TokenType::Var | TokenType::If | TokenType::While 
-                | TokenType::For | TokenType::Return | TokenType::Break | TokenType::Continue => {
+                TokenType::Let
+                | TokenType::Var
+                | TokenType::If
+                | TokenType::While
+                | TokenType::For
+                | TokenType::Return
+                | TokenType::Break
+                | TokenType::Continue => {
                     if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 {
                         break;
                     }

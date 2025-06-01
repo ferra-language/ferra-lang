@@ -40,11 +40,15 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
                     self.error_collector.add_error(error);
 
                     // Try to recover to next top-level item
-                    if ErrorRecovery::smart_recovery(
-                        &mut self.tokens,
-                        "declaration",
-                        &mut self.error_collector,
-                    ).is_some() {
+                    if self
+                        .error_recovery
+                        .attempt_recovery(
+                            &mut self.tokens,
+                            "declaration",
+                            &mut self.error_collector,
+                        )
+                        .is_some()
+                    {
                         continue;
                     } else {
                         // Can't recover, stop parsing
