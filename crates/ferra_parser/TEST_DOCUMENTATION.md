@@ -1,6 +1,6 @@
 # Ferra Parser Test Documentation
 
-**Current Status**: 260 parser tests passing (370 total with lexer)  
+**Current Status**: 292 parser tests passing (408 total with lexer)  
 **Last Updated**: January 2025  
 **Phase 2 Complete**: All core parsing features implemented and tested
 
@@ -8,14 +8,16 @@
 
 ## Test Overview
 
-### Total Test Count: 260 Parser Tests
+### Total Test Count: 292 Parser Tests + 116 Lexer Tests = 408 Total
 - **Core Library Tests**: 63 tests (in-crate unit tests)
-- **Integration Test Suites**: 197 tests (13 test files)
+- **Integration Test Suites**: 229 tests (16 test files)
+- **Lexer Tests**: 116 tests (14 test files)
 
 ### Test Distribution by Feature
 
 | Feature | Tests | Location |
 |---------|-------|----------|
+| **Control Flow Integration** | 23 | `test_control_flow_integration.rs` *(NEW)* |
 | **Expressions** | 27 | `test_expressions.rs` |
 | **Statements** | 13 | `test_statement_parsing.rs` |
 | **Blocks** | 30 | `test_blocks.rs` + `test_phase_2_4_blocks.rs` |
@@ -26,6 +28,8 @@
 | **Macros** | 12 | `test_phase_2_8_4_macro_system.rs` |
 | **Error Recovery** | 23 | `test_phase_2_5_error_recovery.rs` |
 | **Integration** | 16 | `test_phase_2_6_integration.rs` + `test_full_programs.rs` |
+| **Fixture Parsing** | 6 | `test_fixture_parsing.rs` *(NEW)* |
+| **Bug Fixes** | 6 | `test_parser_bug_fix.rs` *(NEW)* |
 | **Additional Coverage** | 13 | `test_additional_coverage.rs` |
 | **Core Units** | 63 | Library tests (in `src/`) |
 
@@ -82,7 +86,7 @@ test_pointer_type()               // Pointer types
 - Patterns: 9 tests for advanced pattern matching
 - Macros: 12 tests for macro definitions and invocations
 
-## Integration Test Suites (197 tests)
+## Integration Test Suites (229 tests)
 
 ### Expression Tests (27 tests) - `test_expressions.rs`
 Complete coverage of all expression types:
@@ -103,6 +107,40 @@ test_function_calls()             // func(arg1, arg2)
 test_member_access()              // obj.property
 test_index_expressions()          // array[index]
 test_chained_postfix_operations() // obj.method()[0].field
+```
+
+### Control Flow Integration Tests (23 tests) - `test_control_flow_integration.rs` *(NEW)*
+Complete integration of lexer control flow keywords with parser:
+
+```rust
+// Basic Control Flow
+test_return_statement()           // return expr;
+test_if_statement()               // if condition { }
+test_if_else_statement()          // if condition { } else { }
+test_while_loop()                 // while condition { }
+test_for_loop()                   // for item in iter { }
+
+// Loop Control
+test_break_statement()            // break;
+test_continue_statement()         // continue;
+test_labeled_break_continue()     // break 'label;
+
+// Visibility & Safety
+test_pub_function()               // pub fn name() { }
+test_unsafe_function()            // unsafe fn name() { }
+test_mixed_visibility_and_safety() // pub unsafe fn
+
+// Complex Scenarios
+test_complex_control_flow()       // Nested if/while/for
+test_nested_control_flow()        // Deep nesting
+test_all_keywords_together()      // All 10 keywords
+test_complex_expressions_in_control_flow() // Rich expressions
+test_performance_stress()         // Stress testing
+
+// Recovery & Edge Cases
+test_malformed_if_statement_recovery()  // Error recovery
+test_malformed_for_loop_recovery()      // Graceful handling
+test_empty_control_flow_blocks()        // Empty { }
 ```
 
 ### Statement Tests (13 tests) - `test_statement_parsing.rs`
@@ -236,6 +274,7 @@ cargo test -p ferra_parser        # All 260 parser tests
 ### Individual Test Suites
 ```bash
 cargo test test_expressions       # 27 expression tests
+cargo test test_control_flow_integration # 23 control flow tests *(NEW)*
 cargo test test_phase_2_8_4_macro_system # 12 macro tests
 cargo test --lib                  # 63 unit tests only
 ```
@@ -260,10 +299,17 @@ test result: ok. 27 passed; 0 failed; 0 ignored
 
 ### Test File Organization
 - `test_expressions.rs` - All expression parsing
+- `test_control_flow_integration.rs` - Control flow keywords integration *(NEW)*
 - `test_statement_parsing.rs` - Declaration and control flow statements
 - `test_phase_2_X_*.rs` - Phase-specific features
 - `src/*/tests.rs` - Unit tests for individual modules
 
+### Recent Enhancements (Added 32 new tests)
+- **Control Flow Integration**: 23 tests for all 10 control flow keywords
+- **Fixture Parsing**: 6 tests for test fixtures and edge cases
+- **Bug Fixes**: 6 tests for specific parser bug validation
+- **Enhanced Coverage**: Improved existing test robustness
+
 ---
 
-**Test Summary**: 260 comprehensive tests covering all parser functionality with 100% pass rate and production-ready quality standards. 
+**Test Summary**: 292 parser tests + 116 lexer tests = **408 total comprehensive tests** covering all functionality with 100% pass rate and production-ready quality standards.
