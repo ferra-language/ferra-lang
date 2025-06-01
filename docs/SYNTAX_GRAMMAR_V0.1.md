@@ -149,12 +149,21 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
                     | "and"       (* Logical AND (alias for &&) *)
                     | "or"        (* Logical OR (alias for ||) *)
                     | "extern"    (* External function/variable block specifier *)
-                  (*| "if"      | "else"    | "loop"    | "while"   | "for"   *)
-                  (*| "return"  | "break"   | "continue"| "import"  | "export"*)
-                  (*| "type"    | "pub"     | "static"  | "const"   | "super" *)
+                    | "return"    (* Return statement *)
+                    | "if"        (* Conditional statement *)
+                    | "else"      (* Conditional alternative *)
+                    | "while"     (* While loop *)
+                    | "for"       (* For loop *)
+                    | "in"        (* For loop iterator keyword *)
+                    | "break"     (* Break from loop *)
+                    | "continue"  (* Continue loop iteration *)
+                    | "pub"       (* Public visibility modifier *)
+                    | "unsafe"    (* Unsafe operation marker *)
+                  (*| "loop"    | "import"  | "export"*)
+                  (*| "type"    | "static"  | "const"   | "super" *)
                   (*| "self"    | "Self"    | "crate"   | "mod"     | "use"   *)
-                  (*| "extern"  | "unsafe"  | "where"   | "impl"    | "trait" *)
-                  (*| "enum"    | "struct"  | "union"   | "in"      | "yield" *)
+                  (*| "where"   | "impl"    | "trait" *)
+                  (*| "enum"    | "struct"  | "union"   | "yield" *)
                   (*| ... other keywords to be added as features are defined ... *)
           ```
           (* Note: The lexer should treat `and` as `&&` and `or` as `||` for the parser. *)
@@ -308,8 +317,10 @@ Whitespace (spaces, tabs) is generally insignificant unless part of significant 
       (* TODO: Generics, where-clauses *)
 
       ParameterList ::= "(" (Parameter ("," Parameter)*)? ")"
-      Parameter       ::= AttributeListOpt IDENTIFIER ":" Type
+      Parameter       ::= AttributeListOpt IDENTIFIER (":" Type)?
       (* Example: fn process_data(#[ai.assume(nll="noalias")] data_slice: &mut [u8]) { ... } *)
+      (* Example with optional types: fn calc(a, b) { ... } - types inferred *)
+      (* Example with explicit types: fn calc(a: int, b: int) { ... } *)
       ```
 
   2.3 Data Class Declaration

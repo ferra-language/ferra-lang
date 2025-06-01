@@ -1,17 +1,11 @@
 use crate::{
     ast::{
-        Arena, CompilationUnit, DataClassDecl, ExternBlock, FunctionDecl, Item, Statement,
-        VariableDecl,
-    },
-    ast::{
-        Attribute, ExternFunction, ExternItem, ExternVariable, Field, Modifiers, Parameter, Type,
-    },
-    ast::{
-        Block, BreakStatement, ContinueStatement, ForStatement, IfStatement, ReturnStatement,
+        Arena, Attribute, Block, BreakStatement, CompilationUnit, ContinueStatement, DataClassDecl,
+        ExternBlock, ExternFunction, ExternItem, ExternVariable, Field, ForStatement, FunctionDecl,
+        IfStatement, Item, Modifiers, Parameter, ReturnStatement, Statement, Type, VariableDecl,
         WhileStatement,
     },
     error::ParseError,
-    pratt::parser::PrattParser,
     token::{Span, Token, TokenStream, TokenType},
 };
 
@@ -185,8 +179,20 @@ impl<'arena, T: TokenStream> StatementParser<'arena, T> {
     }
 
     fn parse_expression(&mut self) -> Result<&'arena crate::ast::Expression, ParseError> {
-        let mut pratt_parser = PrattParser::new(self.arena, &mut self.tokens);
-        pratt_parser.parse_expression(0)
+        let token = self.consume();
+
+        match token.token_type {
+            TokenType::BooleanLiteral(b) => Ok(self.arena.alloc(crate::ast::Expression::Literal(
+                crate::ast::Literal::Boolean(b),
+            ))),
+            TokenType::IntegerLiteral(i) => Ok(self.arena.alloc(crate::ast::Expression::Literal(
+                crate::ast::Literal::Integer(i),
+            ))),
+            TokenType::Identifier(name) => {
+                Ok(self.arena.alloc(crate::ast::Expression::Identifier(name)))
+            }
+            _ => Err(ParseError::unexpected_token("expression", &token)),
+        }
     }
 
     // Placeholder implementations - we'll implement these in the next steps
@@ -634,7 +640,6 @@ impl<'arena, T: TokenStream> StatementParser<'arena, T> {
         let then_block = self.parse_block()?;
 
         let else_block = if matches!(self.peek().token_type, TokenType::Else) {
-            self.consume(); // consume 'else'
             Some(self.parse_block()?)
         } else {
             None

@@ -186,12 +186,22 @@ Ferra's syntax aims to:
                     | "false"     (* Boolean literal *)
                     | "and"       (* Logical AND (alias for &&) *)
                     | "or"        (* Logical OR (alias for ||) *)
-                  (*| "if"      | "else"    | "loop"    | "while"   | "for"   *)
-                  (*| "return"  | "break"   | "continue"| "import"  | "export"*)
-                  (*| "type"    | "pub"     | "static"  | "const"   | "super" *)
+                    | "return"    (* Return statement *)
+                    | "if"        (* Conditional statement *)
+                    | "else"      (* Conditional alternative *)
+                    | "while"     (* While loop *)
+                    | "for"       (* For loop *)
+                    | "in"        (* For loop iterator keyword *)
+                    | "break"     (* Break from loop *)
+                    | "continue"  (* Continue loop iteration *)
+                    | "pub"       (* Public visibility modifier *)
+                    | "unsafe"    (* Unsafe operation marker *)
+                    | "extern"    (* External function/variable block specifier *)
+                  (*| "loop"    | "import"  | "export"*)
+                  (*| "type"    | "static"  | "const"   | "super" *)
                   (*| "self"    | "Self"    | "crate"   | "mod"     | "use"   *)
-                  (*| "extern"  | "unsafe"  | "where"   | "impl"    | "trait" *)
-                  (*| "enum"    | "struct"  | "union"   | "in"      | "yield" *)
+                  (*| "where"   | "impl"    | "trait" *)
+                  (*| "enum"    | "struct"  | "union"   | "yield" *)
                   (*| ... other keywords to be added as features are defined ... *)
           ```
           (* Note: The lexer should treat `and` as `&&` and `or` as `||` for the parser. *)
@@ -319,7 +329,9 @@ Ferra's syntax aims to:
       (* Example: #[inline] pub async fn fetch(url: String) -> Result<Response> { ... } *)
 
       ParameterList ::= "(" (Parameter ("," Parameter)*)? ")"
-      Parameter     ::= IDENTIFIER ":" Type
+      Parameter     ::= IDENTIFIER (":" Type)?
+      (* Example with explicit types: fn calc(a: Int, b: Int) -> Int { ... } *)
+      (* Example with inferred types: fn calc(a, b) { ... } -- types inferred from usage *)
       ```
 
   2.3 Data Class Declaration

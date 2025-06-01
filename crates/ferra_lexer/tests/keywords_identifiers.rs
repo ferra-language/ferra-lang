@@ -32,7 +32,7 @@ fn test_identifier() {
 
 #[test]
 fn test_keywords_and_identifiers() {
-    let tokens = lex_all("let var fn async data match true false ident1 _ident2");
+    let tokens = lex_all("let var fn async data match true false return if else while for in break continue pub unsafe ident1 _ident2");
     // Filter out error tokens (which may be emitted for invalid UTF-8 boundaries or other robust handling)
     let tokens: Vec<_> = tokens
         .into_iter()
@@ -48,27 +48,46 @@ fn test_keywords_and_identifiers() {
         TokenKind::Match,
         TokenKind::True,
         TokenKind::False,
-        TokenKind::Identifier,
-        TokenKind::Underscore,
-        TokenKind::Identifier,
+        TokenKind::Return,
+        TokenKind::If,
+        TokenKind::Else,
+        TokenKind::While,
+        TokenKind::For,
+        TokenKind::In,
+        TokenKind::Break,
+        TokenKind::Continue,
+        TokenKind::Pub,
+        TokenKind::Unsafe,
+        TokenKind::Identifier, // ident1
+        TokenKind::Identifier, // _ident2 (single identifier)
         TokenKind::Eof,
     ];
     let expected_lexemes = [
-        "let", "var", "fn", "async", "data", "match", "true", "false", "ident1", "_", "ident2", "",
+        "let", "var", "fn", "async", "data", "match", "true", "false", "return", "if", "else",
+        "while", "for", "in", "break", "continue", "pub", "unsafe", "ident1", "_ident2", "",
     ];
     let expected_literals = vec![
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        Some(LiteralValue::Boolean(true)),
-        Some(LiteralValue::Boolean(false)),
-        None,
-        None,
-        None,
-        None,
+        None,                               // let
+        None,                               // var
+        None,                               // fn
+        None,                               // async
+        None,                               // data
+        None,                               // match
+        Some(LiteralValue::Boolean(true)),  // true
+        Some(LiteralValue::Boolean(false)), // false
+        None,                               // return
+        None,                               // if
+        None,                               // else
+        None,                               // while
+        None,                               // for
+        None,                               // in
+        None,                               // break
+        None,                               // continue
+        None,                               // pub
+        None,                               // unsafe
+        None,                               // ident1
+        None,                               // _ident2
+        None,                               // Eof
     ];
 
     assert_eq!(
@@ -177,4 +196,82 @@ fn test_nfc_normalization_identifiers() {
     assert_eq!(tokens_complex.len(), 2);
     assert_eq!(tokens_complex[0].kind, TokenKind::Identifier);
     assert_eq!(tokens_complex[0].lexeme, normalized_ident);
+}
+
+#[test]
+fn test_new_keywords() {
+    // Test individual keywords
+    let tokens = lex_all("return if else while for in break continue pub unsafe");
+    let expected_kinds = [
+        TokenKind::Return,
+        TokenKind::If,
+        TokenKind::Else,
+        TokenKind::While,
+        TokenKind::For,
+        TokenKind::In,
+        TokenKind::Break,
+        TokenKind::Continue,
+        TokenKind::Pub,
+        TokenKind::Unsafe,
+        TokenKind::Eof,
+    ];
+    let expected_lexemes = [
+        "return", "if", "else", "while", "for", "in", "break", "continue", "pub", "unsafe", "",
+    ];
+
+    assert_eq!(tokens.len(), expected_kinds.len(), "Token count mismatch");
+
+    for i in 0..tokens.len() {
+        assert_eq!(
+            tokens[i].kind, expected_kinds[i],
+            "Kind mismatch for token {} ({})",
+            i, expected_lexemes[i]
+        );
+        if i < expected_lexemes.len() - 1 {
+            // Skip EOF lexeme check
+            assert_eq!(
+                tokens[i].lexeme, expected_lexemes[i],
+                "Lexeme mismatch for token {}",
+                i
+            );
+        }
+    }
+}
+
+#[test]
+fn test_keyword_like_identifier() {
+    let tokens = lex_all("returnValue ifValue elseWhere forLoop whileTrue inBetween breakPoint continuePath pubData unsafeBlock");
+    let expected_token_data = vec![
+        (TokenKind::Identifier, "returnValue"),
+        (TokenKind::Identifier, "ifValue"),
+        (TokenKind::Identifier, "elseWhere"),
+        (TokenKind::Identifier, "forLoop"),
+        (TokenKind::Identifier, "whileTrue"),
+        (TokenKind::Identifier, "inBetween"),
+        (TokenKind::Identifier, "breakPoint"),
+        (TokenKind::Identifier, "continuePath"),
+        (TokenKind::Identifier, "pubData"),
+        (TokenKind::Identifier, "unsafeBlock"),
+    ];
+
+    assert_eq!(
+        tokens.len(),
+        expected_token_data.len() + 1,
+        "Should be {} identifiers + EOF",
+        expected_token_data.len()
+    );
+
+    for (i, (expected_kind, expected_lexeme)) in expected_token_data.iter().enumerate() {
+        assert_eq!(
+            tokens[i].kind, *expected_kind,
+            "Token {} should be Identifier",
+            i
+        );
+        assert_eq!(
+            tokens[i].lexeme, *expected_lexeme,
+            "Token {} lexeme mismatch",
+            i
+        );
+    }
+    assert_eq!(tokens.last().unwrap().kind, TokenKind::Eof);
 }

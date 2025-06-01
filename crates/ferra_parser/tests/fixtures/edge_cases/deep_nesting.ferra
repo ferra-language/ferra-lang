@@ -1,0 +1,178 @@
+// Deep expression nesting
+fn deeply_nested_expression() -> int {
+    ((((((((((1 + 2) * 3) + 4) * 5) + 6) * 7) + 8) * 9) + 10) * 11)
+}
+
+// Deep function call nesting
+fn nested_calls() -> string {
+    format(
+        format(
+            format(
+                format(
+                    format("Level {} {} {} {} {}", 1, 2, 3, 4, 5),
+                    format("Additional {}", "data")
+                ),
+                format("More {}", "nesting")
+            ),
+            format("Even {}", "deeper")
+        ),
+        format("Final {}", "level")
+    )
+}
+
+// Deep block nesting
+fn nested_blocks() {
+    {
+        {
+            {
+                {
+                    {
+                        {
+                            {
+                                {
+                                    {
+                                        {
+                                            let deep_value = 42;
+                                            println("Deep in the blocks: {}", deep_value);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Deep control flow nesting
+fn nested_control_flow(depth: int) -> int {
+    if depth > 0 {
+        if depth > 1 {
+            if depth > 2 {
+                if depth > 3 {
+                    if depth > 4 {
+                        if depth > 5 {
+                            if depth > 6 {
+                                if depth > 7 {
+                                    if depth > 8 {
+                                        if depth > 9 {
+                                            depth * 10
+                                        } else {
+                                            depth * 9
+                                        }
+                                    } else {
+                                        depth * 8
+                                    }
+                                } else {
+                                    depth * 7
+                                }
+                            } else {
+                                depth * 6
+                            }
+                        } else {
+                            depth * 5
+                        }
+                    } else {
+                        depth * 4
+                    }
+                } else {
+                    depth * 3
+                }
+            } else {
+                depth * 2
+            }
+        } else {
+            depth * 1
+        }
+    } else {
+        0
+    }
+}
+
+// Deep array/tuple nesting
+fn nested_structures() {
+    let deep_array = [
+        [
+            [
+                [
+                    [1, 2, 3],
+                    [4, 5, 6],
+                    [7, 8, 9]
+                ],
+                [
+                    [10, 11, 12],
+                    [13, 14, 15],
+                    [16, 17, 18]
+                ]
+            ]
+        ]
+    ];
+    
+    let deep_tuple = (
+        (
+            (
+                (
+                    (
+                        (1, 2),
+                        (3, 4)
+                    ),
+                    (
+                        (5, 6),
+                        (7, 8)
+                    )
+                ),
+                (
+                    (
+                        (9, 10),
+                        (11, 12)
+                    ),
+                    (
+                        (13, 14),
+                        (15, 16)
+                    )
+                )
+            )
+        )
+    );
+}
+
+// Deep pattern matching
+fn deep_pattern_matching(input: ((((int, int), int), int), int)) -> int {
+    match input {
+        ((((a, b), c), d), e) if a + b + c + d + e > 100 => {
+            match (a, b) {
+                (x, y) if x > y => {
+                    match c {
+                        z if z > 0 => a + b + c + d + e,
+                        _ => 0,
+                    }
+                },
+                _ => -1,
+            }
+        },
+        _ => -2,
+    }
+}
+
+// Deep member access chains
+fn deep_member_access() {
+    let result = object
+        .method1()
+        .field1
+        .method2()
+        .field2
+        .method3()
+        .field3
+        .method4()
+        .field4
+        .method5()
+        .field5
+        .method6()
+        .field6
+        .method7()
+        .field7
+        .method8()
+        .final_value;
+} 

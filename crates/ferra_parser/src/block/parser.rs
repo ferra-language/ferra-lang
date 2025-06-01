@@ -4,8 +4,8 @@
 
 use crate::{
     ast::{
-        Arena, Block, BreakStatement, ContinueStatement, Expression, Literal, Modifiers,
-        ReturnStatement, Statement, Type, VariableDecl,
+        Arena, Block, BreakStatement, ContinueStatement, Expression, ForStatement, IfStatement,
+        Literal, Modifiers, ReturnStatement, Statement, Type, VariableDecl, WhileStatement,
     },
     error::{ParseError, ParseResult},
     pratt::parser::PrattParser,
@@ -338,38 +338,104 @@ impl<'arena> BlockParser<'arena> {
     /// Parse other statement types (simplified implementations)
     fn parse_if_statement<T: TokenStream>(
         &mut self,
-        _tokens: &mut T,
+        tokens: &mut T,
     ) -> ParseResult<&'arena Statement> {
-        // Simplified - just return a dummy statement for now
-        Ok(self.arena.alloc(Statement::Expression(
-            self.arena
-                .alloc(Expression::Literal(Literal::Boolean(true)))
-                .clone(),
-        )))
+        // Consume 'if' token
+        let if_token = self.expect_token(tokens, TokenType::If)?;
+
+        // Parse condition
+        let condition = self.parse_simple_expression(tokens)?;
+
+        // Parse then block
+        let then_block = self.parse_braced_block(tokens)?;
+
+        // Check for optional else block
+        let else_block = if tokens.peek().token_type == TokenType::Else {
+            tokens.consume(); // consume 'else'
+            Some(self.parse_braced_block(tokens)?.clone())
+        } else {
+            None
+        };
+
+        Ok(self.arena.alloc(Statement::If(IfStatement {
+            condition: condition.clone(),
+            then_block: then_block.clone(),
+            else_block,
+            span: if_token.span,
+        })))
     }
 
     fn parse_while_statement<T: TokenStream>(
         &mut self,
-        _tokens: &mut T,
+        tokens: &mut T,
     ) -> ParseResult<&'arena Statement> {
-        // Simplified - just return a dummy statement for now
-        Ok(self.arena.alloc(Statement::Expression(
-            self.arena
-                .alloc(Expression::Literal(Literal::Boolean(true)))
-                .clone(),
-        )))
+        // Consume 'while' token
+        let while_token = self.expect_token(tokens, TokenType::While)?;
+
+        // Parse condition
+        let condition = self.parse_simple_expression(tokens)?;
+
+        // Parse body block
+        let body = self.parse_braced_block(tokens)?;
+
+        Ok(self.arena.alloc(Statement::While(WhileStatement {
+            condition: condition.clone(),
+            body: body.clone(),
+            span: while_token.span,
+        })))
     }
 
     fn parse_for_statement<T: TokenStream>(
         &mut self,
-        _tokens: &mut T,
+        tokens: &mut T,
     ) -> ParseResult<&'arena Statement> {
-        // Simplified - just return a dummy statement for now
-        Ok(self.arena.alloc(Statement::Expression(
-            self.arena
-                .alloc(Expression::Literal(Literal::Boolean(true)))
-                .clone(),
-        )))
+        // Consume 'for' token
+        let for_token = self.expect_token(tokens, TokenType::For)?;
+
+        // Parse pattern/variable name
+        let variable = match tokens.peek().token_type {
+            TokenType::Identifier(ref name) => {
+                let name = name.clone();
+                tokens.consume();
+                name
+            }
+            _ => return Err(ParseError::unexpected_token("identifier", tokens.peek())),
+        };
+
+        // Consume 'in' keyword
+        self.expect_token(tokens, TokenType::In)?;
+
+        // Parse iterable expression
+        let iterable = self.parse_simple_expression(tokens)?;
+
+        // Parse body block
+        let body = self.parse_braced_block(tokens)?;
+
+        Ok(self.arena.alloc(Statement::For(ForStatement {
+            variable,
+            iterable: iterable.clone(),
+            body: body.clone(),
+            span: for_token.span,
+        })))
+    }
+
+    /// Parse a simple expression (identifier, literal, etc.)
+    fn parse_simple_expression<T: TokenStream>(
+        &mut self,
+        tokens: &mut T,
+    ) -> ParseResult<&'arena Expression> {
+        let token = tokens.consume();
+
+        match token.token_type {
+            TokenType::BooleanLiteral(b) => {
+                Ok(self.arena.alloc(Expression::Literal(Literal::Boolean(b))))
+            }
+            TokenType::IntegerLiteral(i) => {
+                Ok(self.arena.alloc(Expression::Literal(Literal::Integer(i))))
+            }
+            TokenType::Identifier(name) => Ok(self.arena.alloc(Expression::Identifier(name))),
+            _ => Err(ParseError::unexpected_token("expression", &token)),
+        }
     }
 
     fn parse_return_statement<T: TokenStream>(
@@ -413,36 +479,36 @@ impl<'arena> BlockParser<'arena> {
         &mut self,
         tokens: &mut T,
     ) -> ParseResult<&'arena Statement> {
-        let break_token = tokens.consume(); // consume 'break'
+        // Consume 'break' token
+        let break_token = self.expect_token(tokens, TokenType::Break)?;
 
         // Consume optional semicolon
         if matches!(tokens.peek().token_type, TokenType::Semicolon) {
             tokens.consume();
         }
 
-        let break_stmt = BreakStatement {
+        // For now, keep it simple without label support to match existing AST
+        Ok(self.arena.alloc(Statement::Break(BreakStatement {
             span: break_token.span,
-        };
-
-        Ok(self.arena.alloc(Statement::Break(break_stmt)))
+        })))
     }
 
     fn parse_continue_statement<T: TokenStream>(
         &mut self,
         tokens: &mut T,
     ) -> ParseResult<&'arena Statement> {
-        let continue_token = tokens.consume(); // consume 'continue'
+        // Consume 'continue' token
+        let continue_token = self.expect_token(tokens, TokenType::Continue)?;
 
         // Consume optional semicolon
         if matches!(tokens.peek().token_type, TokenType::Semicolon) {
             tokens.consume();
         }
 
-        let continue_stmt = ContinueStatement {
+        // For now, keep it simple without label support to match existing AST
+        Ok(self.arena.alloc(Statement::Continue(ContinueStatement {
             span: continue_token.span,
-        };
-
-        Ok(self.arena.alloc(Statement::Continue(continue_stmt)))
+        })))
     }
 
     /// Parse a labeled block (for break/continue)

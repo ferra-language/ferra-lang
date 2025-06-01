@@ -20,6 +20,16 @@ pub enum TokenKind {
     Match,
     True,
     False,
+    Return,
+    If,
+    Else,
+    While,
+    For,
+    In,
+    Break,
+    Continue,
+    Pub,
+    Unsafe,
 
     // Identifiers
     Identifier,
@@ -554,9 +564,9 @@ impl<'a> Lexer<'a> {
                 }
             }
 
-            // Identifiers and keywords (Unicode-aware)
-            if is_xid_start(ch) {
-                // Use is_xid_start directly
+            // Identifier or Keyword
+            if is_xid_start(ch) || ch == '_' {
+                // Allow leading underscore for identifiers
                 let start = idx;
                 let start_col = self.column;
                 let mut ident_str = String::new();
@@ -565,7 +575,6 @@ impl<'a> Lexer<'a> {
 
                 while let Some(&(_, c)) = self.chars.peek() {
                     if is_xid_continue(c) {
-                        // Use is_xid_continue directly
                         ident_str.push(c);
                         self.advance_char();
                     } else {
@@ -586,8 +595,18 @@ impl<'a> Lexer<'a> {
                     "match" => TokenKind::Match,
                     "true" => TokenKind::True,
                     "false" => TokenKind::False,
-                    "and" => TokenKind::LogicalAnd,
-                    "or" => TokenKind::LogicalOr,
+                    "return" => TokenKind::Return,
+                    "if" => TokenKind::If,
+                    "else" => TokenKind::Else,
+                    "while" => TokenKind::While,
+                    "for" => TokenKind::For,
+                    "in" => TokenKind::In,
+                    "break" => TokenKind::Break,
+                    "continue" => TokenKind::Continue,
+                    "pub" => TokenKind::Pub,
+                    "unsafe" => TokenKind::Unsafe,
+                    "and" => TokenKind::LogicalAnd, // As per DESIGN_LEXER.md, `and` maps to `&&` token kind
+                    "or" => TokenKind::LogicalOr, // As per DESIGN_LEXER.md, `or` maps to `||` token kind
                     _ => TokenKind::Identifier,
                 };
 
@@ -757,25 +776,47 @@ impl<'a> Lexer<'a> {
         // At EOF, flush any remaining dedents
         while self.indent_stack.len() > 1 {
             self.indent_stack.pop();
+            let current_offset = self.input.len(); // EOF is at the end of input
+            let (line, col) = self.get_line_col_for_offset(current_offset);
             tokens.push(Token {
                 kind: TokenKind::Dedent,
                 lexeme: String::new(),
                 literal: None,
                 span: Span {
                     start: Position {
-                        line: self.line,
-                        column: self.column,
-                        offset: self.current_offset(),
+                        line,
+                        column: col,
+                        offset: current_offset,
                     },
                     end: Position {
-                        line: self.line,
-                        column: self.column,
-                        offset: self.current_offset(),
+                        line,
+                        column: col,
+                        offset: current_offset,
                     },
                 },
             });
         }
-        tokens.push(Token::eof_dummy());
+
+        let eof_offset = self.input.len();
+        let (eof_line, eof_col) = self.get_line_col_for_offset(eof_offset);
+
+        tokens.push(Token {
+            kind: TokenKind::Eof,
+            lexeme: String::new(),
+            literal: None,
+            span: Span {
+                start: Position {
+                    line: eof_line,
+                    column: eof_col,
+                    offset: eof_offset,
+                },
+                end: Position {
+                    line: eof_line,
+                    column: eof_col,
+                    offset: eof_offset,
+                },
+            },
+        });
         tokens
     }
 
@@ -1621,9 +1662,9 @@ impl<'a> Lexer<'a> {
                             offset: start_offset,
                         },
                         end: Position {
-                            line: self.line,
-                            column: self.column,
-                            offset: self.current_offset(),
+                            line: current_lex_end_line,
+                            column: current_lex_end_col,
+                            offset: current_lex_end_offset,
                         },
                     },
                 }
@@ -2053,5 +2094,30 @@ impl<'a> Lexer<'a> {
         }
 
         result
+    }
+
+    // Helper function to get line and column for a given byte offset
+    // This is a simplified version; a more robust solution might pre-calculate line starts.
+    fn get_line_col_for_offset(&self, target_offset: usize) -> (usize, usize) {
+        let mut line_number = 1;
+        let mut line_start_offset = 0;
+
+        for (i, char) in self.input.char_indices() {
+            if i >= target_offset {
+                break;
+            }
+            if char == '\n' {
+                line_number += 1;
+                line_start_offset = i + 1;
+            }
+        }
+        // If target_offset is exactly after a newline, it's start of next line, col 1
+        // Otherwise, it's target_offset - line_start_offset + 1
+        let column_number = if target_offset == line_start_offset && target_offset != 0 {
+            1
+        } else {
+            target_offset.saturating_sub(line_start_offset) + 1
+        };
+        (line_number, column_number)
     }
 }

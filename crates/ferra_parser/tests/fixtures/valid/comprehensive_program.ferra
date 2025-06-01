@@ -1,0 +1,113 @@
+#[derive(Debug, Clone)]
+data Person {
+    #[serde(rename = "full_name")]
+    name: string,
+    age: int,
+    active: bool,
+}
+
+#[derive(PartialEq)]
+data Result<T, E> {
+    Ok(value: T),
+    Err(error: E),
+}
+
+extern "C" {
+    #[link_name = "printf"]
+    fn c_printf(format: *const char, ...) -> int;
+    
+    static GLOBAL_COUNTER: int;
+}
+
+#[inline(always)]
+pub fn greet<T: Display>(person: &Person, extra: T) -> string where T: Clone {
+    let message = "Hello, " + person.name;
+    if person.age >= 18 {
+        message + " (adult)"
+    } else {
+        message + " (minor)"
+    }
+}
+
+pub async fn fetch_user_data(id: int) -> Result<Person, string> {
+    let response = http::get("https://api.example.com/users/" + id.to_string()).await;
+    
+    match response {
+        Ok(data) => {
+            let person = Person {
+                name: data.name,
+                age: data.age,
+                active: true,
+            };
+            Ok(person)
+        },
+        Err(err) => Err("Failed to fetch user: " + err.message),
+    }
+}
+
+fn process_numbers(numbers: [int]) -> [int] {
+    let mut results = [];
+    
+    for num in numbers {
+        let processed = match num {
+            0..=10 => num * 2,
+            11..=100 => num + 10,
+            _ if num < 0 => 0,
+            big_num @ 101.. => {
+                println("Processing large number: {}", big_num);
+                big_num / 2
+            },
+        };
+        results.push(processed);
+    }
+    
+    results
+}
+
+macro_rules! debug_print {
+    ($msg:expr) => {
+        println!("[DEBUG] {}", $msg)
+    };
+    ($fmt:expr, $($arg:expr),+) => {
+        println!("[DEBUG] " + $fmt, $($arg),+)
+    };
+}
+
+unsafe fn raw_memory_access(ptr: *mut int, size: int) {
+    for i in 0..size {
+        *ptr.offset(i) = i * 2;
+    }
+}
+
+async fn main() -> Result<(), string> {
+    debug_print!("Starting application");
+    
+    let people = [
+        Person { name: "Alice", age: 25, active: true },
+        Person { name: "Bob", age: 17, active: false },
+    ];
+    
+    for person in people {
+        let greeting = greet(person, "Welcome!");
+        println(greeting);
+        
+        if person.active {
+            let user_data = fetch_user_data(person.age).await?;
+            debug_print!("Fetched data for: {}", user_data.name);
+        }
+    }
+    
+    let numbers = [1, 15, 50, 150, -5, 0];
+    let processed = process_numbers(numbers);
+    println("Processed numbers: {:?}", processed);
+    
+    let result: Result<int, string> = Ok(42);
+    let value = result.unwrap_or_default();
+    
+    unsafe {
+        let mut buffer: [int; 10] = [0; 10];
+        raw_memory_access(buffer.as_mut_ptr(), 10);
+    }
+    
+    Ok(())
+} 

@@ -44,7 +44,7 @@ fn test_complex_program_with_all_features() {
         TokenType::Identifier("float".to_string()),
         TokenType::Semicolon,
         TokenType::RightBrace,
-        // Function: fn magnitude(v: Vector3) -> float { return 0.0; }
+        // Function: fn magnitude(v: Vector3) -> float { let result = 0.0; }
         TokenType::Fn,
         TokenType::Identifier("magnitude".to_string()),
         TokenType::LeftParen,
@@ -55,11 +55,13 @@ fn test_complex_program_with_all_features() {
         TokenType::Arrow,
         TokenType::Identifier("float".to_string()),
         TokenType::LeftBrace,
-        TokenType::Return,
+        TokenType::Let,
+        TokenType::Identifier("result".to_string()),
+        TokenType::Equal,
         TokenType::FloatLiteral(0.0),
         TokenType::Semicolon,
         TokenType::RightBrace,
-        // Main function: fn main() -> int { return 0; }
+        // Main function: fn main() -> int { let x = 0; }
         TokenType::Fn,
         TokenType::Identifier("main".to_string()),
         TokenType::LeftParen,
@@ -67,7 +69,9 @@ fn test_complex_program_with_all_features() {
         TokenType::Arrow,
         TokenType::Identifier("int".to_string()),
         TokenType::LeftBrace,
-        TokenType::Return,
+        TokenType::Let,
+        TokenType::Identifier("x".to_string()),
+        TokenType::Equal,
         TokenType::IntegerLiteral(0),
         TokenType::Semicolon,
         TokenType::RightBrace,
@@ -218,7 +222,7 @@ fn test_functions_with_different_signatures() {
         TokenType::RightParen,
         TokenType::LeftBrace,
         TokenType::RightBrace,
-        // fn one_param(x: int) -> int { return x; }
+        // fn one_param(x: int) -> int { let result = x; }
         TokenType::Fn,
         TokenType::Identifier("one_param".to_string()),
         TokenType::LeftParen,
@@ -229,11 +233,13 @@ fn test_functions_with_different_signatures() {
         TokenType::Arrow,
         TokenType::Identifier("int".to_string()),
         TokenType::LeftBrace,
-        TokenType::Return,
+        TokenType::Let,
+        TokenType::Identifier("result".to_string()),
+        TokenType::Equal,
         TokenType::Identifier("x".to_string()),
         TokenType::Semicolon,
         TokenType::RightBrace,
-        // fn three_params(a: int, b: float, c: string) -> bool { return true; }
+        // fn three_params(a: int, b: float, c: string) -> bool { let flag = true; }
         TokenType::Fn,
         TokenType::Identifier("three_params".to_string()),
         TokenType::LeftParen,
@@ -252,7 +258,9 @@ fn test_functions_with_different_signatures() {
         TokenType::Arrow,
         TokenType::Identifier("bool".to_string()),
         TokenType::LeftBrace,
-        TokenType::Return,
+        TokenType::Let,
+        TokenType::Identifier("flag".to_string()),
+        TokenType::Equal,
         TokenType::BooleanLiteral(true),
         TokenType::Semicolon,
         TokenType::RightBrace,
@@ -415,7 +423,7 @@ fn test_mixed_top_level_items() {
         TokenType::RightParen,
         TokenType::Semicolon,
         TokenType::RightBrace,
-        // fn second_function(data: MyData) -> int { return 42; }
+        // fn second_function(data: MyData) -> int { let result = 42; }
         TokenType::Fn,
         TokenType::Identifier("second_function".to_string()),
         TokenType::LeftParen,
@@ -426,7 +434,9 @@ fn test_mixed_top_level_items() {
         TokenType::Arrow,
         TokenType::Identifier("int".to_string()),
         TokenType::LeftBrace,
-        TokenType::Return,
+        TokenType::Let,
+        TokenType::Identifier("result".to_string()),
+        TokenType::Equal,
         TokenType::IntegerLiteral(42),
         TokenType::Semicolon,
         TokenType::RightBrace,

@@ -7,7 +7,15 @@ fn lex_all(input: &str) -> Vec<Token> {
 
 #[test]
 fn test_empty_input() {
-    assert_eq!(lex_all(""), vec![Token::eof_dummy()]);
+    let tokens = lex_all("");
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0].kind, TokenKind::Eof);
+    assert_eq!(tokens[0].lexeme, "");
+    assert_eq!(tokens[0].literal, None);
+    // EOF should be at line 1, column 1 for empty input
+    assert_eq!(tokens[0].span.start.line, 1);
+    assert_eq!(tokens[0].span.start.column, 1);
+    assert_eq!(tokens[0].span.start.offset, 0);
 }
 
 #[test]

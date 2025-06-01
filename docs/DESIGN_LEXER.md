@@ -16,7 +16,7 @@ This design is based on the token definitions in `docs/rfc/RFC-001_SYNTAX_GRAMMA
 
 The lexer **MUST** recognize and produce tokens corresponding to all terminal symbols defined in `docs/rfc/RFC-001_SYNTAX_GRAMMAR.md`, Section 1.3 ("Tokens"). This includes:
 
-*   **Keywords**: `let`, `var`, `fn`, `async`, `data`, `match`, `true`, `false`, `and`, `or`. (This list will expand as more keywords are formally added to the grammar from `SYNTAX_GRAMMAR_V0.1.md` or subsequent versions).
+*   **Keywords**: `let`, `var`, `fn`, `async`, `data`, `match`, `true`, `false`, `and`, `or`, `return`, `if`, `else`, `while`, `for`, `in`, `break`, `continue`, `pub`, `unsafe`. (This list will expand as more keywords are formally added to the grammar from `SYNTAX_GRAMMAR_V0.1.md` or subsequent versions).
 *   **Identifiers**: `IDENTIFIER` (Unicode ID_Start/ID_Continue based).
 *   **Literals**:
     *   `IntegerLiteral` (Decimal, Hex, Octal, Binary, with `_` separators).

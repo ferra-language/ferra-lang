@@ -5,7 +5,7 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 ---
 
 ## 1. Token Coverage
-- [x] Some keywords (`let`, `var`, `fn`, `async`, `data`, `match`, `true`, `false`)
+- [x] **All keywords** (`let`, `var`, `fn`, `async`, `data`, `match`, `true`, `false`, `return`, `if`, `else`, `while`, `for`, `in`, `break`, `continue`, `pub`, `unsafe`) **COMPLETED**
 - [x] Identifiers (ASCII and Unicode, NFC normalized)
 - [x] Integer literals (decimal, hex, octal, binary, underscores)
 - [x] Float literals (with exponents, underscores, trailing dot, leading dot)
@@ -20,6 +20,7 @@ This document tracks all code and tests to be written for the `ferra_lexer` crat
 - [x] Comments (`// ...`, `/* ... */` with nesting)
 - [x] Indentation tokens (`Indent`, `Dedent`, `Newline`) (Python-style)
 - [x] Error token for unrecognized input (robust)
+- [x] **Control-flow keywords** – `return if else while for in break continue` **COMPLETED**
 - [ ] **Ragel integration:** Define `.rl` state-machine spec and integrate generated Rust code (future)
 - [x] **Shebang handling:** Treat a `#!...` shebang at the very start of a file as a single-line comment (skipped)
 

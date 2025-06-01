@@ -1,0 +1,64 @@
+// Missing semicolon
+let x = 5
+let y = 10;
+
+// Unmatched brackets
+fn broken_function() {
+    let arr = [1, 2, 3;
+    return arr
+}
+
+// Invalid pattern matching
+fn invalid_match(value: int) {
+    match value {
+        1 => "one",
+        2 => "two"
+        // Missing comma and closing brace
+    }
+}
+
+// Malformed data class
+data Person {
+    name: string
+    age: int,  // inconsistent comma usage
+    active bool  // missing colon
+}
+
+// Invalid generic syntax
+fn bad_generics<T U>(x: T) -> U {  // missing comma
+    x as U
+}
+
+// Unclosed string literal
+let message = "Hello world
+
+// Unmatched parentheses in expression
+let result = (1 + 2 * (3 + 4);
+
+// Invalid attribute syntax
+#[derive Debug]  // missing parentheses
+data Item {
+    value: int,
+}
+
+// Malformed extern block
+extern "C" {
+    fn printf(format: *const char) -> int
+    // missing semicolon
+}
+
+// Invalid macro invocation
+println!("Hello" "World");  // missing comma
+
+// Broken control flow
+if condition  // missing braces/colon
+    do_something();
+else
+    do_other();
+
+// Invalid assignment
+let mut x;
+x += 5;  // x is uninitialized
+
+// Malformed tuple
+let tuple = (1, 2, 3,);  // trailing comma in wrong context 

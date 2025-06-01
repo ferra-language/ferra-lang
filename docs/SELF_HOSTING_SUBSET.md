@@ -31,7 +31,7 @@ This subset includes the following core language features, as defined in `docs/S
 ### 3.1. Lexical Structure
 
 *   Comments (line `//` and block `/* ... */`).
-*   Keywords (e.g., `fn`, `let`, `var`, `if`, `else`, `while`, `for`, `in`, `match`, `return`, `true`, `false`, `data`).
+*   Keywords (e.g., `fn`, `let`, `var`, `if`, `else`, `while`, `for`, `in`, `match`, `return`, `true`, `false`, `data`, `break`, `continue`, `pub`, `unsafe`).
 *   Identifiers (Unicode based).
 *   Literals: Integers (decimal, hex, binary, octal), Floats (basic forms), Strings (with common escapes), Booleans.
 *   Operators: Arithmetic (`+`, `-`, `*`, `/`, `%`), Comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`), Logical (`&&`/`and`, `||`/`or`, `!`), Assignment (`=`, `+=`, etc.), Range (`..`, `..=`).
@@ -39,7 +39,7 @@ This subset includes the following core language features, as defined in `docs/S
 
 ### 3.2. Declarations
 
-*   Function definitions: `fn identifier(param: Type, ...) -> ReturnType { ... }`
+*   Function definitions: `fn identifier(param: Type?, ...) -> ReturnType { ... }` (parameter types are optional and can be inferred).
 *   Variable bindings: `let identifier: Type = expression;` and `var identifier: Type = expression;` (type annotation optional if inferable for `let`).
 *   Data structures: `data Identifier { field1: Type, field2: Type, ... }` (simple product types/structs).
 *   Data structures (enums with data): `data EnumName { Variant1(Type1, Type2), Variant2 { field: Type }, Variant3 }`

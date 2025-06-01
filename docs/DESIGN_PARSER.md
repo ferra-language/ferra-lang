@@ -41,7 +41,8 @@ This document specifies the design for the Ferra v0.1 parser. The parser is the 
     *   Parse optional `async` keyword.
     *   Parse optional `extern AbiStringLiteral` (e.g., `extern "C"`) for specifying linkage/calling convention.
     *   Parse `fn` keyword, function name (IDENTIFIER).
-    *   Parse `ParameterList` (`(` Parameter (` ,` Parameter)* `)? `)`). Each `Parameter` also parses an `AttributeListOpt`.
+    *   Parse `ParameterList` (`(` Parameter (`,` Parameter)* `)?` `)`).
+        *   **Parameter Type Inference**: Each `Parameter` can optionally include a type annotation (`IDENTIFIER (":" Type)?`). If the `:` and `Type` are omitted, the parser creates a placeholder type (e.g., `Type::Identifier("_")`) that will be resolved by the type inference system. This allows functions like `fn calc(a, b) { ... }` where parameter types are inferred from usage.
     *   Parse optional return type (`->` Type).
     *   Parse either a `Block` for the function body or a terminating `;` (for declarations without a Ferra body, common in FFI or forward declarations).
     *   Construct a `FunctionDeclNode` in the AST, including any attributes, linkage info, and body/terminator.

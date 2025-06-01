@@ -1,9 +1,16 @@
-use ferra_lexer::{Lexer, LiteralValue, Token, TokenKind};
+use ferra_lexer::{Lexer, LiteralValue, TokenKind};
 
 #[test]
 fn empty_source_emits_eof() {
     let tokens = Lexer::new("").lex();
-    assert_eq!(tokens, vec![Token::eof_dummy()]);
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0].kind, TokenKind::Eof);
+    assert_eq!(tokens[0].lexeme, "");
+    assert_eq!(tokens[0].literal, None);
+    // EOF should be at line 1, column 1 for empty input
+    assert_eq!(tokens[0].span.start.line, 1);
+    assert_eq!(tokens[0].span.start.column, 1);
+    assert_eq!(tokens[0].span.start.offset, 0);
 }
 
 #[test]

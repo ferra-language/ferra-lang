@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# Token stream and lexer output (will be implemented later)
-# ferra_lexer = { path = "../ferra_lexer" }
+# Token stream and lexer output
+ferra_lexer = { path = "../ferra_lexer" }
 
 # Error handling and diagnostics
 thiserror = "1.0"
@@ -20,5 +20,5 @@ pretty_assertions = "1.4"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
-name = "parser_bench"
+name = "parser_benchmarks"
 harness = false 

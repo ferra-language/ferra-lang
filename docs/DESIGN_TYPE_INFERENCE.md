@@ -80,7 +80,7 @@ Type inference will apply to the following, as defined in `docs/rfc/RFC-001_SYNT
     *   Parameters with type annotations provide known types within the function body.
     *   Return type annotation constrains the type of the function body's result.
     *   If return type is omitted (and allowed), it's inferred from `return` statements.
-    *   If parameter types are omitted (⚠️ **TBD** if this is allowed for non-closures), they become fresh type variables.
+    *   If parameter types are omitted (✅ **IMPLEMENTED** for all functions including non-closures), they become fresh type variables that are resolved through type inference.
 *   **Function Calls (`FunctionCallNode`)**:
     *   `callee(arg1, arg2)`: If `callee` has type `fn(P1, P2) -> R`, then `type_of(arg1)` must unify with `P1`, `type_of(arg2)` with `P2`, and the call expression has type `R`.
 *   **Operators (`UnaryOpNode`, `BinaryOpNode`, `AssignNode` from `ExprKind::Assign`)**:

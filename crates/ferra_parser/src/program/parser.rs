@@ -5,6 +5,7 @@ use crate::{
         Arena, Block, CompilationUnit, DataClassDecl, ExternBlock, Field, FunctionDecl, Item,
         Modifiers, Parameter, Type,
     },
+    block::parser::BlockParser,
     error::{parse_error::*, recovery::*},
     statement::StatementParser,
     token::{Span, Token, TokenStream, TokenType},
@@ -283,12 +284,14 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
             _ => return Err(ParseError::unexpected_token("parameter name", &name_token)),
         };
 
-        let colon_token = self.consume();
-        if !matches!(colon_token.token_type, TokenType::Colon) {
-            return Err(ParseError::unexpected_token("':'", &colon_token));
-        }
-
-        let param_type = self.parse_type()?;
+        // Optional type annotation (for type inference support)
+        let param_type = if matches!(self.tokens.peek().token_type, TokenType::Colon) {
+            self.consume(); // consume ':'
+            self.parse_type()?
+        } else {
+            // If no type annotation, use a placeholder type that inference can fill in
+            Type::Identifier("_".to_string()) // Inferred type placeholder
+        };
 
         Ok(Parameter {
             name,
@@ -478,37 +481,9 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
 
     /// Parse a block (simplified version)
     fn parse_block(&mut self) -> Result<Block, ParseError> {
-        let start_span = self.current_span();
-
-        let open_brace = self.consume();
-        if !matches!(open_brace.token_type, TokenType::LeftBrace) {
-            return Err(ParseError::unexpected_token("'{'", &open_brace));
-        }
-
-        // For now, just consume tokens until closing brace
-        // In a real implementation, we'd parse statements
-        let statements = Vec::new();
-
-        while !matches!(self.tokens.peek().token_type, TokenType::RightBrace) {
-            // Skip tokens for now - in real implementation we'd parse statements
-            self.consume();
-        }
-
-        let close_brace = self.consume();
-        if !matches!(close_brace.token_type, TokenType::RightBrace) {
-            return Err(ParseError::unexpected_token("'}'", &close_brace));
-        }
-
-        Ok(Block {
-            statements,
-            is_braced: true,
-            span: start_span,
-            scope_depth: 0,
-            is_unsafe: false,
-            is_async: false,
-            is_try: false,
-            label: None,
-        })
+        let mut block_parser = BlockParser::new(self.arena);
+        let block_ref = block_parser.parse_braced_block(&mut self.tokens)?;
+        Ok(block_ref.clone())
     }
 
     /// Get the current token span
