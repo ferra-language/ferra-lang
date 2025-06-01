@@ -157,7 +157,7 @@ impl<'arena, T: TokenStream> PrattParser<'arena, T> {
             TokenType::Minus => self.parse_binary_expression(left, BinaryOperator::Sub, token),
             TokenType::Slash => self.parse_binary_expression(left, BinaryOperator::Div, token),
             TokenType::Equal => self.parse_binary_expression(left, BinaryOperator::Assign, token),
-            
+
             // Comparison operators
             TokenType::EqualEqual => {
                 self.parse_binary_expression(left, BinaryOperator::Equal, token)
@@ -169,7 +169,7 @@ impl<'arena, T: TokenStream> PrattParser<'arena, T> {
             TokenType::Greater => {
                 self.parse_binary_expression(left, BinaryOperator::Greater, token)
             }
-            
+
             // Less common operators
             TokenType::Percent => self.parse_binary_expression(left, BinaryOperator::Mod, token),
             TokenType::LessEqual => {

@@ -41,29 +41,27 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
     pub fn has_errors(&mut self) -> bool {
         self.error_collector
             .as_ref()
-            .map_or(false, |ec| ec.has_errors())
+            .is_some_and(|ec| ec.has_errors())
     }
 
     /// Get all collected errors
     pub fn get_errors(&mut self) -> Vec<ParseError> {
-        self.error_collector()
-            .get_errors()
-            .to_vec()
+        self.error_collector().get_errors().to_vec()
     }
 
     /// Parse a complete compilation unit (top-level program)
     pub fn parse_compilation_unit(&mut self) -> Result<&'arena CompilationUnit, Vec<ParseError>> {
         let start_span = self.current_span();
-        
+
         // Fast path for empty programs
         if self.tokens.is_at_end() {
-            let compilation_unit = self.arena.alloc(CompilationUnit { 
-                items: Vec::new(), 
-                span: start_span 
+            let compilation_unit = self.arena.alloc(CompilationUnit {
+                items: Vec::new(),
+                span: start_span,
             });
             return Ok(compilation_unit);
         }
-        
+
         // Pre-allocate items vector with reasonable capacity
         let mut items = Vec::with_capacity(8);
 
@@ -76,7 +74,7 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
                     if self.error_collector.is_none() {
                         self.error_collector = Some(ErrorCollector::new(50));
                     }
-                    
+
                     // Add error and try recovery
                     self.error_collector.as_mut().unwrap().add_error(error);
 
@@ -87,7 +85,7 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
                         "declaration",
                         self.error_collector.as_mut().unwrap(),
                     );
-                    
+
                     if recovery_result.is_some() {
                         continue;
                     } else {

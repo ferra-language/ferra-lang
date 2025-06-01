@@ -253,7 +253,8 @@ fn memory_leak_detection(c: &mut Criterion) {
 
     group.bench_function("repeated_parsing_no_leaks", |b| {
         b.iter(|| {
-            for _ in 0..25 { // Reduced from 100
+            for _ in 0..25 {
+                // Reduced from 100
                 let arena = Arena::new();
                 let stream = VecTokenStream::from_token_types(tokens.clone());
                 let mut parser = ProgramParser::new(&arena, stream);
@@ -265,7 +266,8 @@ fn memory_leak_detection(c: &mut Criterion) {
 
     // Test memory usage with larger inputs
     let mut large_source = String::new();
-    for i in 0..50 { // Reduced from 200
+    for i in 0..50 {
+        // Reduced from 200
         large_source.push_str(&format!(
             "fn func_{i}() {{ let x_{i} = {i}; let y_{i} = x_{i} * 2; }}\n"
         ));
@@ -568,9 +570,9 @@ fn bench_error_recovery_scalability(c: &mut Criterion) {
     group.sample_size(50); // Reduce sample size
 
     let program_sizes = vec![
-        ("small_with_errors", 25),   // Reduced from 50
-        ("medium_with_errors", 75),  // Reduced from 200
-        ("large_with_errors", 150),  // Reduced from 500
+        ("small_with_errors", 25),       // Reduced from 50
+        ("medium_with_errors", 75),      // Reduced from 200
+        ("large_with_errors", 150),      // Reduced from 500
         ("very_large_with_errors", 250), // Reduced from 1000
     ];
 
