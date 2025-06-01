@@ -1,0 +1,4 @@
+// Invalid syntax examples for testing error handling
+let x = 1 + + 2  // Double operator
+let y =          // Missing value
+fn incomplete(   // Missing closing paren 

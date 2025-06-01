@@ -1,0 +1,9 @@
+// Function declaration example
+fn add(a: Int, b: Int) -> Int {
+    return a + b
+}
+
+async fn fetch_data(url: String) -> String {
+    // Implementation would go here
+    return "data"
+} 

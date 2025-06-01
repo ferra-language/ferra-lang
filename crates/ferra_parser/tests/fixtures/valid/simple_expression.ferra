@@ -1,0 +1,4 @@
+// Simple expression example
+let x = 1 + 2 * 3
+let y = "hello world"
+let z = true 
