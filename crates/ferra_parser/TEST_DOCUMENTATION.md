@@ -1,6 +1,6 @@
 # Ferra Parser Test Documentation
 
-**Current Status**: 292 parser tests passing (408 total with lexer)  
+**Current Status**: 335 parser tests passing (450 total with lexer)  
 **Last Updated**: January 2025  
 **Phase 2 Complete**: All core parsing features implemented and tested
 
@@ -8,17 +8,20 @@
 
 ## Test Overview
 
-### Total Test Count: 292 Parser Tests + 116 Lexer Tests = 408 Total
+### Total Test Count: 335 Parser Tests + 115 Lexer Tests = 450 Total
 - **Core Library Tests**: 63 tests (in-crate unit tests)
-- **Integration Test Suites**: 229 tests (17 test files)
-- **Lexer Tests**: 116 tests (14 test files)
+- **Integration Test Suites**: 272 tests (20 test files)
+- **Lexer Tests**: 115 tests (14 test files)
 
 ### Test Distribution by Feature
 
 | Feature | Tests | Location |
 |---------|-------|----------|
-| **Control Flow Integration** | 23 | `test_control_flow_integration.rs` *(NEW)* |
-| **Modifier Combinations** | 18 | `test_modifier_combinations.rs` *(NEW)* |
+| **Control Flow Integration** | 23 | `test_control_flow_integration.rs` |
+| **Async Functions** | 9 | `test_async_functions.rs` *(NEW)* |
+| **Grammar Coverage** | 7 | `test_grammar_coverage.rs` *(NEW)* |
+| **Grammar Edge Cases** | 10 | `test_grammar_edge_cases.rs` *(NEW)* |
+| **Modifier Combinations** | 18 | `test_modifier_combinations.rs` |
 | **Expressions** | 27 | `test_expressions.rs` |
 | **Statements** | 13 | `test_statement_parsing.rs` |
 | **Blocks** | 30 | `test_blocks.rs` + `test_phase_2_4_blocks.rs` |
@@ -29,8 +32,8 @@
 | **Macros** | 12 | `test_phase_2_8_4_macro_system.rs` |
 | **Error Recovery** | 23 | `test_phase_2_5_error_recovery.rs` |
 | **Integration** | 16 | `test_phase_2_6_integration.rs` + `test_full_programs.rs` |
-| **Fixture Parsing** | 6 | `test_fixture_parsing.rs` *(NEW)* |
-| **Bug Fixes** | 6 | `test_parser_bug_fix.rs` *(NEW)* |
+| **Fixture Parsing** | 6 | `test_fixture_parsing.rs` |
+| **Bug Fixes** | 6 | `test_parser_bug_fix.rs` |
 | **Additional Coverage** | 13 | `test_additional_coverage.rs` |
 | **Core Units** | 63 | Library tests (in `src/`) |
 
@@ -87,7 +90,7 @@ test_pointer_type()               // Pointer types
 - Patterns: 9 tests for advanced pattern matching
 - Macros: 12 tests for macro definitions and invocations
 
-## Integration Test Suites (229 tests)
+## Integration Test Suites (272 tests)
 
 ### Expression Tests (27 tests) - `test_expressions.rs`
 Complete coverage of all expression types:
@@ -110,7 +113,7 @@ test_index_expressions()          // array[index]
 test_chained_postfix_operations() // obj.method()[0].field
 ```
 
-### Control Flow Integration Tests (23 tests) - `test_control_flow_integration.rs` *(NEW)*
+### Control Flow Integration Tests (23 tests) - `test_control_flow_integration.rs`
 Complete integration of lexer control flow keywords with parser:
 
 ```rust
@@ -144,15 +147,15 @@ test_malformed_for_loop_recovery()      // Graceful handling
 test_empty_control_flow_blocks()        // Empty { }
 ```
 
-### Modifier Combination Tests (18 tests) - `test_modifier_combinations.rs` *(NEW)*
+### Modifier Combination Tests (18 tests) - `test_modifier_combinations.rs`
 Complete testing of all modifier combinations and scenarios:
 
 ```rust
 // Function Modifiers
 test_pub_function()               // pub fn name() { }
 test_unsafe_function()            // unsafe fn name() { }
-test_pub_unsafe_function()       // pub unsafe fn name() { }
-test_unsafe_pub_function()       // Tests order sensitivity
+test_pub_unsafe_function()        // pub unsafe fn name() { }
+test_unsafe_pub_function()        // Tests order sensitivity
 
 // Variable Declaration Modifiers  
 test_pub_let_declaration()        // pub let var: Type = value;
@@ -175,6 +178,57 @@ test_modifier_position_sensitivity()               // Order matters
 test_all_valid_function_modifier_combinations()    // Matrix testing
 test_all_valid_variable_modifier_combinations()    // Matrix testing
 test_comprehensive_program_with_all_modifiers()    // Full integration
+```
+
+### Async Function Tests (9 tests) - `test_async_functions.rs` *(NEW)*
+Comprehensive testing of async function declarations and modifier combinations:
+
+```rust
+// Basic Async Functions
+test_basic_async_function()                        // async fn test() { }
+test_async_function_with_parameters()              // async fn fetch_data(url: String) { }
+test_async_function_with_return_type()             // async fn compute() -> i32 { }
+
+// Async with Modifiers
+test_public_async_function()                       // pub async fn api_call() { }
+test_unsafe_async_function()                       // unsafe async fn dangerous_async() { }
+test_pub_unsafe_async_function()                   // pub unsafe async fn public_dangerous_async() { }
+
+// Complex Scenarios
+test_multiple_async_functions()                    // Multiple async functions in one compilation unit
+test_async_function_with_body()                    // Async function containing statements
+test_async_keyword_order_validation()              // Testing proper modifier ordering
+```
+
+### Grammar Coverage Tests (7 tests) - `test_grammar_coverage.rs` *(NEW)*
+Automated verification of grammar production coverage:
+
+```rust
+// Coverage Tracking
+test_coverage_tracking_basic()                     // Basic coverage functionality
+test_literal_coverage()                            // All literal types covered
+test_control_flow_coverage()                       // Control flow statements
+test_modifier_coverage()                           // All modifiers (pub, unsafe, async)
+test_expression_coverage()                         // Expression types
+test_coverage_report()                             // Coverage reporting
+test_comprehensive_coverage_verification()         // Full grammar coverage analysis
+```
+
+### Grammar Edge Cases Tests (10 tests) - `test_grammar_edge_cases.rs` *(NEW)*
+Systematic edge case generation and boundary condition testing:
+
+```rust
+// Edge Case Categories
+test_empty_input_edge_cases()                      // Empty and whitespace-only inputs
+test_minimal_valid_cases()                         // Minimal valid constructs
+test_whitespace_edge_cases()                       // Whitespace variations
+test_nested_structure_cases()                      // Deep nesting scenarios
+test_boundary_condition_cases()                    // Large inputs, Unicode
+test_error_boundary_cases()                        // Invalid syntax patterns
+test_comprehensive_edge_case_generation()          // All edge cases combined
+test_grammar_stress_testing()                      // Stress testing scenarios
+test_unicode_support()                             // Unicode identifiers and strings
+test_comment_edge_cases()                          // Comment handling edge cases
 ```
 
 ### Statement Tests (13 tests) - `test_statement_parsing.rs`
@@ -302,13 +356,18 @@ fn test_feature_name() {
 
 ### Complete Test Suite
 ```bash
-cargo test -p ferra_parser        # All 260 parser tests
+cargo test                        # All 450 tests (parser + lexer)
+cargo test --package ferra_parser # 335 parser tests only
+cargo test --package ferra_lexer  # 115 lexer tests only
 ```
 
 ### Individual Test Suites
 ```bash
 cargo test test_expressions       # 27 expression tests
-cargo test test_control_flow_integration # 23 control flow tests *(NEW)*
+cargo test test_control_flow_integration # 23 control flow tests
+cargo test test_async_functions    # 9 async function tests *(NEW)*
+cargo test test_grammar_coverage   # 7 grammar coverage tests *(NEW)*
+cargo test test_grammar_edge_cases # 10 edge case tests *(NEW)*
 cargo test test_phase_2_8_4_macro_system # 12 macro tests
 cargo test --lib                  # 63 unit tests only
 ```
@@ -333,17 +392,23 @@ test result: ok. 27 passed; 0 failed; 0 ignored
 
 ### Test File Organization
 - `test_expressions.rs` - All expression parsing
-- `test_control_flow_integration.rs` - Control flow keywords integration *(NEW)*
+- `test_control_flow_integration.rs` - Control flow keywords integration
+- `test_async_functions.rs` - Async function declarations *(NEW)*
+- `test_grammar_coverage.rs` - Grammar production coverage *(NEW)*
+- `test_grammar_edge_cases.rs` - Systematic edge case testing *(NEW)*
 - `test_statement_parsing.rs` - Declaration and control flow statements
 - `test_phase_2_X_*.rs` - Phase-specific features
 - `src/*/tests.rs` - Unit tests for individual modules
 
-### Recent Enhancements (Added 32 new tests)
+### Recent Enhancements (Added 43 new tests)
 - **Control Flow Integration**: 23 tests for all 10 control flow keywords
+- **Async Functions**: 9 tests for comprehensive async function support *(NEW)*
+- **Grammar Coverage**: 7 tests for automated grammar production verification *(NEW)*
+- **Grammar Edge Cases**: 10 tests for systematic boundary condition testing *(NEW)*
 - **Fixture Parsing**: 6 tests for test fixtures and edge cases
 - **Bug Fixes**: 6 tests for specific parser bug validation
 - **Enhanced Coverage**: Improved existing test robustness
 
 ---
 
-**Test Summary**: 292 parser tests + 116 lexer tests = **408 total comprehensive tests** covering all functionality with 100% pass rate and production-ready quality standards.
+**Test Summary**: 335 parser tests + 115 lexer tests = **450 total comprehensive tests** covering all functionality with 100% pass rate and production-ready quality standards.

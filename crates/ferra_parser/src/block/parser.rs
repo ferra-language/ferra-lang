@@ -451,15 +451,8 @@ impl<'arena> BlockParser<'arena> {
         ) {
             None
         } else {
-            let expr_token = tokens.consume();
-            match expr_token.token_type {
-                TokenType::IntegerLiteral(value) => Some(
-                    self.arena
-                        .alloc(Expression::Literal(Literal::Integer(value))),
-                ),
-                TokenType::Identifier(name) => Some(self.arena.alloc(Expression::Identifier(name))),
-                _ => return Err(ParseError::unexpected_token("expression", &expr_token)),
-            }
+            // Use the full expression parser to handle complex expressions
+            Some(self.parse_expression(tokens)?)
         };
 
         // Consume optional semicolon

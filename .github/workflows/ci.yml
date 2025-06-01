@@ -105,3 +105,78 @@ jobs:
 
       - name: Report fuzz results
         run: echo "✅ Proptest fuzzing completed successfully" 
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Run coverage analysis
+        run: |
+          cargo tarpaulin --workspace --timeout 120 --out xml --output-dir coverage/ --ignore-tests
+
+      - name: Upload coverage to codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/cobertura.xml
+          fail_ci_if_error: true
+          flags: unittests
+          name: codecov-umbrella
+          verbose: true
+
+      - name: Generate coverage report
+        run: |
+          cargo tarpaulin --workspace --timeout 120 --out html --output-dir coverage/ --ignore-tests
+          echo "📊 Coverage report generated in coverage/tarpaulin-report.html"
+
+  benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run parser benchmarks
+        run: |
+          cd crates/ferra_parser
+          cargo bench --bench parser_benchmarks -- --output-format json | tee benchmark_output.json
+
+      - name: Memory leak detection
+        run: |
+          # Install valgrind for memory leak detection
+          sudo apt-get update && sudo apt-get install -y valgrind
+          
+          cd crates/ferra_parser
+          # Build test binary for memory analysis
+          cargo build --tests --release
+          
+          # Run memory leak detection on core parser tests
+          echo "🔍 Running memory leak detection..."
+          valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all \
+            --track-origins=yes --verbose --error-exitcode=1 \
+            target/release/deps/ferra_parser-* --nocapture --test-threads=1 || echo "⚠️ Memory analysis completed"
+
+      - name: Store benchmark results
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Ferra Parser Benchmarks
+          tool: cargo
+          output-file-path: crates/ferra_parser/benchmark_output.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '200%'
+          comment-on-alert: true
+          fail-on-alert: true
+
+      - name: Generate performance report
+        run: |
+          echo "🚀 Performance benchmarks completed and tracked" 

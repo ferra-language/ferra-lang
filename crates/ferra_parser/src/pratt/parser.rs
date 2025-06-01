@@ -185,6 +185,7 @@ impl<'arena, T: TokenStream> PrattParser<'arena, T> {
             TokenType::Dot => self.parse_member_access(left, token),
             TokenType::LeftParen => self.parse_function_call(left, token),
             TokenType::LeftBracket => self.parse_index_expression(left, token),
+            TokenType::Question => self.parse_try_expression(left, token),
 
             _ => Err(ParseError::unexpected_token("binary operator", token)),
         }
@@ -376,6 +377,20 @@ impl<'arena, T: TokenStream> PrattParser<'arena, T> {
             object: Box::new(left.clone()),
             index: Box::new(index.clone()),
             span: _token.span.clone(),
+        })))
+    }
+
+    /// Parse try expressions like expr?
+    fn parse_try_expression(
+        &mut self,
+        left: &'arena Expression,
+        token: &Token,
+    ) -> Result<&'arena Expression, ParseError> {
+        use crate::ast::UnaryExpression;
+        Ok(self.arena.alloc(Expression::Unary(UnaryExpression {
+            operator: crate::ast::UnaryOperator::Try,
+            operand: Box::new(left.clone()),
+            span: token.span.clone(),
         })))
     }
 

@@ -394,7 +394,8 @@ impl ErrorRecovery {
                 // Try to insert missing token or skip problematic token
                 match production {
                     ErrorProduction::MissingSemicolon => {
-                        // Continue parsing, assuming semicolon is optional
+                        // Continue parsing, treating semicolon as optional
+                        // Don't advance here - let the caller handle advancement
                         return Some(tokens.peek().clone());
                     }
                     ErrorProduction::MissingOpenParen
@@ -438,19 +439,26 @@ impl ErrorRecovery {
         error_count < 100 && !tokens.is_at_end()
     }
 
-    /// Smart recovery that preserves context
+    /// Smart recovery that preserves context and guarantees forward progress
     pub fn smart_recovery<T: TokenStream>(
         tokens: &mut T,
         expected_context: &str,
         collector: &mut ErrorCollector,
     ) -> Option<Token> {
+        // Track initial position to ensure we make progress
+        let initial_position = tokens.position();
+
         // First try production-based recovery
         if let Some(token) = Self::recover_with_productions(tokens, expected_context, collector) {
+            // Ensure we made progress - if not, force advance by one token
+            if tokens.position() == initial_position && !tokens.is_at_end() {
+                tokens.consume(); // Force progress to prevent infinite loops
+            }
             return Some(token);
         }
 
-        // Then try context-specific recovery
-        if expected_context.contains("expression") {
+        // If production recovery didn't work, use panic mode with guaranteed progress
+        let result = if expected_context.contains("expression") {
             Self::recover_to_expression(tokens)
         } else if expected_context.contains("statement") {
             Self::recover_to_statement(tokens)
@@ -464,6 +472,18 @@ impl ErrorRecovery {
                 tokens,
                 &[SyncToken::StatementStart, SyncToken::StatementTerminator],
             )
+        };
+
+        // Final safety check: if we haven't advanced, force advancement
+        if tokens.position() == initial_position && !tokens.is_at_end() {
+            tokens.consume(); // Ensure we always make progress
+            if !tokens.is_at_end() {
+                Some(tokens.peek().clone())
+            } else {
+                None
+            }
+        } else {
+            result
         }
     }
 }

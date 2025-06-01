@@ -2,11 +2,10 @@
 
 use crate::{
     ast::{
-        Arena, Block, CompilationUnit, DataClassDecl, ExternBlock, Field, FunctionDecl, Item,
-        Modifiers, Parameter, Type,
+        Arena, Attribute, Block, CompilationUnit, DataClassDecl, ExternBlock, Field, FunctionDecl,
+        Item, Modifiers, Parameter, Type,
     },
-    block::parser::BlockParser,
-    error::{parse_error::*, recovery::*},
+    error::{DiagnosticReport, ErrorCollector, ParseError},
     statement::StatementParser,
     token::{Span, Token, TokenStream, TokenType},
 };
@@ -18,6 +17,7 @@ pub struct ProgramParser<'arena, T: TokenStream + Clone> {
     error_collector: ErrorCollector,
 }
 
+#[allow(dead_code)] // Legacy methods kept for compatibility
 impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
     /// Create a new program parser
     pub fn new(arena: &'arena Arena, tokens: T) -> Self {
@@ -40,7 +40,8 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
                 Err(error) => {
                     self.error_collector.add_error(error);
 
-                    // Try to recover to next top-level item
+                    // Try to recover to next top-level item using improved error recovery
+                    use crate::error::recovery::ErrorRecovery;
                     if ErrorRecovery::smart_recovery(
                         &mut self.tokens,
                         "declaration",
@@ -85,16 +86,21 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
 
     /// Parse a top-level item (function, data class, extern block, etc.)
     fn parse_top_level_item(&mut self) -> Result<&'arena Item, ParseError> {
+        // Parse optional attributes first
+        let attributes = self.parse_attributes()?;
+
+        // Parse optional modifiers
+        let modifiers = self.parse_modifiers()?;
+
         let current = self.tokens.peek();
 
         match current.token_type {
-            TokenType::Fn => self.parse_function_declaration(),
-            TokenType::Data => self.parse_data_class_declaration(),
+            TokenType::Fn => self.parse_function_declaration_with_attributes(modifiers, attributes),
+            TokenType::Async => self.parse_async_item_with_attributes(modifiers, attributes),
+            TokenType::Data => self.parse_data_class_declaration_with_attributes(attributes),
             TokenType::Extern => self.parse_extern_block(),
-            TokenType::Pub => self.parse_public_item(),
-            TokenType::Unsafe => self.parse_unsafe_item(),
-            TokenType::Static => self.parse_static_variable(),
-            TokenType::Let | TokenType::Var => self.parse_variable_declaration(),
+            TokenType::Static => self.parse_static_variable_with_attributes(modifiers, attributes),
+            TokenType::Let | TokenType::Var => self.parse_variable_declaration_with_attributes(modifiers, attributes),
             _ => Err(ParseError::unexpected_token(
                 "function, data class, extern block, variable declaration, or other top-level declaration",
                 current,
@@ -102,7 +108,7 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         }
     }
 
-    /// Parse a function declaration at the top level
+    /// Parse a function declaration
     fn parse_function_declaration(&mut self) -> Result<&'arena Item, ParseError> {
         let start_span = self.current_span();
 
@@ -198,18 +204,22 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
             return Err(ParseError::unexpected_token("'extern'", &extern_token));
         }
 
-        // ABI string
-        let abi_token = self.consume();
-        let abi = match abi_token.token_type {
-            TokenType::StringLiteral(abi) => abi,
-            _ => return Err(ParseError::unexpected_token("ABI string", &abi_token)),
+        // Optional ABI specification
+        let abi = if matches!(self.tokens.peek().token_type, TokenType::StringLiteral(_)) {
+            let abi_token = self.consume();
+            match abi_token.token_type {
+                TokenType::StringLiteral(abi) => Some(abi),
+                _ => unreachable!(),
+            }
+        } else {
+            None
         };
 
-        // Extern items
+        // Parse extern items
         let items = self.parse_extern_item_list()?;
 
         let extern_block = ExternBlock {
-            abi,
+            abi: abi.unwrap_or_else(|| "C".to_string()),
             items,
             span: start_span,
         };
@@ -229,6 +239,23 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
                 is_public: true,
                 is_unsafe: false,
             }),
+            TokenType::Async => {
+                // Handle pub async combination
+                self.consume(); // consume 'async'
+                let inner_token = self.tokens.peek();
+                match inner_token.token_type {
+                    TokenType::Fn => {
+                        self.parse_async_function_declaration_with_modifiers(Modifiers {
+                            is_public: true,
+                            is_unsafe: false,
+                        })
+                    }
+                    _ => Err(ParseError::unexpected_token(
+                        "fn after pub async",
+                        inner_token,
+                    )),
+                }
+            }
             TokenType::Let | TokenType::Var => {
                 self.parse_variable_declaration_with_modifiers(Modifiers {
                     is_public: true,
@@ -248,14 +275,31 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
                         is_public: true,
                         is_unsafe: true,
                     }),
+                    TokenType::Async => {
+                        // Handle pub unsafe async combination
+                        self.consume(); // consume 'async'
+                        let async_token = self.tokens.peek();
+                        match async_token.token_type {
+                            TokenType::Fn => {
+                                self.parse_async_function_declaration_with_modifiers(Modifiers {
+                                    is_public: true,
+                                    is_unsafe: true,
+                                })
+                            }
+                            _ => Err(ParseError::unexpected_token(
+                                "fn after pub unsafe async",
+                                async_token,
+                            )),
+                        }
+                    }
                     _ => Err(ParseError::unexpected_token(
-                        "fn after pub unsafe",
+                        "fn or async after pub unsafe",
                         inner_token,
                     )),
                 }
             }
             _ => Err(ParseError::unexpected_token(
-                "fn, let, var, data, or unsafe after pub",
+                "fn, async, let, var, data, or unsafe after pub",
                 current,
             )),
         }
@@ -273,8 +317,151 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
                 is_public: false,
                 is_unsafe: true,
             }),
-            _ => Err(ParseError::unexpected_token("fn after unsafe", current)),
+            TokenType::Async => {
+                // Handle unsafe async combination
+                self.consume(); // consume 'async'
+                let inner_token = self.tokens.peek();
+                match inner_token.token_type {
+                    TokenType::Fn => {
+                        self.parse_async_function_declaration_with_modifiers(Modifiers {
+                            is_public: false,
+                            is_unsafe: true,
+                        })
+                    }
+                    _ => Err(ParseError::unexpected_token(
+                        "fn after unsafe async",
+                        inner_token,
+                    )),
+                }
+            }
+            _ => Err(ParseError::unexpected_token(
+                "fn or async after unsafe",
+                current,
+            )),
         }
+    }
+
+    /// Parse an async item (async fn)
+    fn parse_async_item(&mut self) -> Result<&'arena Item, ParseError> {
+        // Consume 'async' keyword
+        self.consume();
+
+        // Check what kind of item follows
+        let current = self.tokens.peek();
+        match current.token_type {
+            TokenType::Fn => self.parse_async_function_declaration(),
+            _ => Err(ParseError::unexpected_token("fn after async", current)),
+        }
+    }
+
+    /// Parse an async function declaration (async fn)
+    fn parse_async_function_declaration(&mut self) -> Result<&'arena Item, ParseError> {
+        let start_span = self.current_span();
+
+        // Consume 'fn'
+        let fn_token = self.consume();
+        if !matches!(fn_token.token_type, TokenType::Fn) {
+            return Err(ParseError::unexpected_token("'fn'", &fn_token));
+        }
+
+        // Function name
+        let name_token = self.consume();
+        let name = match name_token.token_type {
+            TokenType::Identifier(name) => name,
+            _ => return Err(ParseError::unexpected_token("function name", &name_token)),
+        };
+
+        // Parameters
+        let parameters = self.parse_parameter_list()?;
+
+        // Return type
+        let return_type = if matches!(self.tokens.peek().token_type, TokenType::Arrow) {
+            self.consume(); // consume '->'
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        // Body
+        let body = if matches!(self.tokens.peek().token_type, TokenType::LeftBrace) {
+            Some(self.parse_block()?)
+        } else {
+            None
+        };
+
+        let func_decl = FunctionDecl {
+            name,
+            generics: None,
+            parameters,
+            return_type,
+            body,
+            is_async: true, // This is the key difference
+            is_extern: false,
+            abi: None,
+            modifiers: Modifiers {
+                is_public: false,
+                is_unsafe: false,
+            },
+            attributes: Vec::new(),
+            span: start_span,
+        };
+
+        Ok(self.arena.alloc(Item::FunctionDecl(func_decl)))
+    }
+
+    /// Parse an async function declaration with modifiers
+    fn parse_async_function_declaration_with_modifiers(
+        &mut self,
+        modifiers: Modifiers,
+    ) -> Result<&'arena Item, ParseError> {
+        let start_span = self.current_span();
+
+        // Consume 'fn'
+        let fn_token = self.consume();
+        if !matches!(fn_token.token_type, TokenType::Fn) {
+            return Err(ParseError::unexpected_token("'fn'", &fn_token));
+        }
+
+        // Function name
+        let name_token = self.consume();
+        let name = match name_token.token_type {
+            TokenType::Identifier(name) => name,
+            _ => return Err(ParseError::unexpected_token("function name", &name_token)),
+        };
+
+        // Parameters
+        let parameters = self.parse_parameter_list()?;
+
+        // Return type
+        let return_type = if matches!(self.tokens.peek().token_type, TokenType::Arrow) {
+            self.consume(); // consume '->'
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        // Body
+        let body = if matches!(self.tokens.peek().token_type, TokenType::LeftBrace) {
+            Some(self.parse_block()?)
+        } else {
+            None
+        };
+
+        let func_decl = FunctionDecl {
+            name,
+            generics: None,
+            parameters,
+            return_type,
+            body,
+            is_async: true,
+            is_extern: false,
+            abi: None,
+            modifiers,
+            attributes: Vec::new(),
+            span: start_span,
+        };
+
+        Ok(self.arena.alloc(Item::FunctionDecl(func_decl)))
     }
 
     /// Parse a static variable declaration
@@ -310,18 +497,8 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         // Optional initializer
         let initializer = if matches!(self.tokens.peek().token_type, TokenType::Equal) {
             self.consume(); // consume '='
-                            // For now, parse a simple expression (identifier or literal)
-            let expr_token = self.consume();
-            match expr_token.token_type {
-                TokenType::IntegerLiteral(i) => Some(crate::ast::Expression::Literal(
-                    crate::ast::Literal::Integer(i),
-                )),
-                TokenType::BooleanLiteral(b) => Some(crate::ast::Expression::Literal(
-                    crate::ast::Literal::Boolean(b),
-                )),
-                TokenType::Identifier(name) => Some(crate::ast::Expression::Identifier(name)),
-                _ => return Err(ParseError::unexpected_token("expression", &expr_token)),
-            }
+                            // Use proper expression parsing instead of single-token parsing
+            Some(self.parse_expression()?.clone())
         } else {
             None
         };
@@ -348,9 +525,10 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
     }
 
     /// Parse a variable declaration with modifiers (let/var)
-    fn parse_variable_declaration_with_modifiers(
+    fn parse_variable_declaration_with_attributes(
         &mut self,
         modifiers: Modifiers,
+        attributes: Vec<Attribute>,
     ) -> Result<&'arena Item, ParseError> {
         let start_span = self.current_span();
 
@@ -376,18 +554,8 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         // Optional initializer
         let initializer = if matches!(self.tokens.peek().token_type, TokenType::Equal) {
             self.consume(); // consume '='
-                            // For now, parse a simple expression (identifier or literal)
-            let expr_token = self.consume();
-            match expr_token.token_type {
-                TokenType::IntegerLiteral(i) => Some(crate::ast::Expression::Literal(
-                    crate::ast::Literal::Integer(i),
-                )),
-                TokenType::BooleanLiteral(b) => Some(crate::ast::Expression::Literal(
-                    crate::ast::Literal::Boolean(b),
-                )),
-                TokenType::Identifier(name) => Some(crate::ast::Expression::Identifier(name)),
-                _ => return Err(ParseError::unexpected_token("expression", &expr_token)),
-            }
+                            // Use proper expression parsing instead of single-token parsing
+            Some(self.parse_expression()?.clone())
         } else {
             None
         };
@@ -403,11 +571,19 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
             initializer,
             is_mutable,
             modifiers,
-            attributes: Vec::new(),
+            attributes,
             span: start_span,
         };
 
         Ok(self.arena.alloc(crate::ast::Item::VariableDecl(var_decl)))
+    }
+
+    /// Parse a variable declaration with modifiers (legacy compatibility)
+    fn parse_variable_declaration_with_modifiers(
+        &mut self,
+        modifiers: Modifiers,
+    ) -> Result<&'arena Item, ParseError> {
+        self.parse_variable_declaration_with_attributes(modifiers, Vec::new())
     }
 
     /// Parse a function declaration with modifiers
@@ -465,13 +641,38 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         Ok(self.arena.alloc(Item::FunctionDecl(func_decl)))
     }
 
-    /// Parse a data class declaration with modifiers
-    fn parse_data_class_declaration_with_modifiers(
+    /// Parse a data class declaration with attributes
+    fn parse_data_class_declaration_with_attributes(
         &mut self,
-        _modifiers: Modifiers,
+        attributes: Vec<Attribute>,
     ) -> Result<&'arena Item, ParseError> {
-        // For now, just call the existing method
-        self.parse_data_class_declaration()
+        let start_span = self.current_span();
+
+        // Consume 'data'
+        let data_token = self.tokens.consume();
+        if !matches!(data_token.token_type, TokenType::Data) {
+            return Err(ParseError::unexpected_token("'data'", &data_token));
+        }
+
+        // Class name
+        let name_token = self.tokens.consume();
+        let name = match name_token.token_type {
+            TokenType::Identifier(name) => name,
+            _ => return Err(ParseError::unexpected_token("class name", &name_token)),
+        };
+
+        // Fields
+        let fields = self.parse_field_list()?;
+
+        let data_decl = DataClassDecl {
+            name,
+            generics: None,
+            fields,
+            attributes,
+            span: start_span,
+        };
+
+        Ok(self.arena.alloc(Item::DataClassDecl(data_decl)))
     }
 
     /// Parse parameter list for functions
@@ -569,6 +770,12 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
     fn parse_field(&mut self) -> Result<Field, ParseError> {
         let start_span = self.current_span();
 
+        // Parse optional attributes for the field
+        let attributes = self.parse_attributes()?;
+
+        // Parse optional modifiers (like pub)
+        let _modifiers = self.parse_modifiers()?;
+
         let name_token = self.consume();
         let name = match name_token.token_type {
             TokenType::Identifier(name) => name,
@@ -585,7 +792,7 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
         Ok(Field {
             name,
             field_type,
-            attributes: Vec::new(),
+            attributes,
             span: start_span,
         })
     }
@@ -714,29 +921,216 @@ impl<'arena, T: TokenStream + Clone> ProgramParser<'arena, T> {
 
     /// Parse a block (simplified version)
     fn parse_block(&mut self) -> Result<Block, ParseError> {
-        let mut block_parser = BlockParser::new(self.arena);
-        let block_ref = block_parser.parse_braced_block(&mut self.tokens)?;
+        let mut block_parser = crate::block::parser::BlockParser::new(self.arena);
+        let block_ref = block_parser.parse_block(&mut self.tokens)?;
         Ok(block_ref.clone())
     }
 
-    /// Get the current token span
+    /// Parse an expression (simplified)
+    fn parse_expression(&mut self) -> Result<&'arena crate::ast::Expression, ParseError> {
+        let mut pratt_parser = crate::pratt::parser::PrattParser::new(self.arena, &mut self.tokens);
+        pratt_parser.parse_expression(0)
+    }
+
+    /// Get current span from token stream
     fn current_span(&self) -> Span {
         self.tokens.peek().span.clone()
     }
 
-    /// Consume the current token
+    /// Consume next token
     fn consume(&mut self) -> Token {
         self.tokens.consume()
     }
 
-    /// Get collected errors
+    /// Get all parsing errors
     pub fn get_errors(&self) -> &[ParseError] {
         self.error_collector.get_errors()
     }
 
-    /// Check if there are any errors
+    /// Check if there are any parsing errors
     pub fn has_errors(&self) -> bool {
         self.error_collector.has_errors()
+    }
+
+    /// Parse optional attributes
+    fn parse_attributes(&mut self) -> Result<Vec<Attribute>, ParseError> {
+        crate::attribute::parser::parse_attributes(&mut self.tokens)
+    }
+
+    /// Parse optional modifiers
+    fn parse_modifiers(&mut self) -> Result<Modifiers, ParseError> {
+        let mut is_public = false;
+        let mut is_unsafe = false;
+
+        while matches!(
+            self.tokens.peek().token_type,
+            TokenType::Pub | TokenType::Unsafe
+        ) {
+            match self.tokens.consume().token_type {
+                TokenType::Pub => is_public = true,
+                TokenType::Unsafe => is_unsafe = true,
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(Modifiers {
+            is_public,
+            is_unsafe,
+        })
+    }
+
+    /// Parse function declaration with attributes
+    fn parse_function_declaration_with_attributes(
+        &mut self,
+        modifiers: Modifiers,
+        attributes: Vec<Attribute>,
+    ) -> Result<&'arena Item, ParseError> {
+        let start_span = self.current_span();
+
+        // Consume 'fn'
+        let fn_token = self.tokens.consume();
+        if !matches!(fn_token.token_type, TokenType::Fn) {
+            return Err(ParseError::unexpected_token("'fn'", &fn_token));
+        }
+
+        // Function name
+        let name_token = self.tokens.consume();
+        let name = match name_token.token_type {
+            TokenType::Identifier(name) => name,
+            _ => return Err(ParseError::unexpected_token("function name", &name_token)),
+        };
+
+        // Parameters
+        let parameters = self.parse_parameter_list()?;
+
+        // Return type
+        let return_type = if matches!(self.tokens.peek().token_type, TokenType::Arrow) {
+            self.tokens.consume(); // consume '->'
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        // Body
+        let body = if matches!(self.tokens.peek().token_type, TokenType::LeftBrace) {
+            Some(self.parse_block()?)
+        } else {
+            None
+        };
+
+        let func_decl = FunctionDecl {
+            name,
+            generics: None,
+            parameters,
+            return_type,
+            body,
+            is_async: false,
+            is_extern: false,
+            abi: None,
+            modifiers,
+            attributes,
+            span: start_span,
+        };
+
+        Ok(self.arena.alloc(Item::FunctionDecl(func_decl)))
+    }
+
+    /// Parse async item with attributes
+    fn parse_async_item_with_attributes(
+        &mut self,
+        modifiers: Modifiers,
+        attributes: Vec<Attribute>,
+    ) -> Result<&'arena Item, ParseError> {
+        // Consume 'async'
+        let async_token = self.tokens.consume();
+        if !matches!(async_token.token_type, TokenType::Async) {
+            return Err(ParseError::unexpected_token("'async'", &async_token));
+        }
+
+        // Must be followed by 'fn'
+        if !matches!(self.tokens.peek().token_type, TokenType::Fn) {
+            return Err(ParseError::unexpected_token(
+                "'fn' after 'async'",
+                self.tokens.peek(),
+            ));
+        }
+
+        self.parse_async_function_declaration_with_attributes(modifiers, attributes)
+    }
+
+    /// Parse async function declaration with attributes
+    fn parse_async_function_declaration_with_attributes(
+        &mut self,
+        modifiers: Modifiers,
+        attributes: Vec<Attribute>,
+    ) -> Result<&'arena Item, ParseError> {
+        let start_span = self.current_span();
+
+        // Consume 'fn' (we already consumed 'async')
+        let fn_token = self.tokens.consume();
+        if !matches!(fn_token.token_type, TokenType::Fn) {
+            return Err(ParseError::unexpected_token("'fn'", &fn_token));
+        }
+
+        // Function name
+        let name_token = self.tokens.consume();
+        let name = match name_token.token_type {
+            TokenType::Identifier(name) => name,
+            _ => return Err(ParseError::unexpected_token("function name", &name_token)),
+        };
+
+        // Parameters
+        let parameters = self.parse_parameter_list()?;
+
+        // Return type
+        let return_type = if matches!(self.tokens.peek().token_type, TokenType::Arrow) {
+            self.tokens.consume(); // consume '->'
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        // Body
+        let body = if matches!(self.tokens.peek().token_type, TokenType::LeftBrace) {
+            Some(self.parse_block()?)
+        } else {
+            None
+        };
+
+        let func_decl = FunctionDecl {
+            name,
+            generics: None,
+            parameters,
+            return_type,
+            body,
+            is_async: true,
+            is_extern: false,
+            abi: None,
+            modifiers,
+            attributes,
+            span: start_span,
+        };
+
+        Ok(self.arena.alloc(Item::FunctionDecl(func_decl)))
+    }
+
+    /// Parse static variable with attributes
+    fn parse_static_variable_with_attributes(
+        &mut self,
+        _modifiers: Modifiers,
+        _attributes: Vec<Attribute>,
+    ) -> Result<&'arena Item, ParseError> {
+        // For now, delegate to the existing static variable parser
+        self.parse_static_variable()
+    }
+
+    /// Parse data class declaration with modifiers (legacy compatibility)
+    fn parse_data_class_declaration_with_modifiers(
+        &mut self,
+        _modifiers: Modifiers,
+    ) -> Result<&'arena Item, ParseError> {
+        // For now, just call the existing method without attributes
+        self.parse_data_class_declaration()
     }
 }
 

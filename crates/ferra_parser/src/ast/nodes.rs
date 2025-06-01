@@ -281,6 +281,7 @@ pub enum UnaryOperator {
     Not,
     Minus,
     Plus,
+    Try,
 }
 
 /// Function call expression

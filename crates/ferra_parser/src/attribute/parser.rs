@@ -140,21 +140,95 @@ impl<'a, T: TokenStream> AttributeParser<'a, T> {
 
     /// Parse a single attribute argument (identifier, string, or simple expression)
     fn parse_attribute_argument(&mut self) -> ParseResult<String> {
-        let token = self.tokens.consume();
+        let mut result = String::new();
+        let mut paren_depth = 0;
+        let mut bracket_depth = 0;
 
-        match token.token_type {
-            TokenType::Identifier(name) => Ok(name),
-            TokenType::StringLiteral(s) => Ok(format!("\"{}\"", s)),
-            TokenType::IntegerLiteral(i) => Ok(i.to_string()),
-            TokenType::BooleanLiteral(b) => Ok(b.to_string()),
-            _ => {
-                // For more complex expressions, we'll represent them as strings for now
-                // In future phases, we might want to parse full expressions
-                match &token.token_type {
-                    TokenType::Identifier(name) => Ok(name.clone()),
-                    _ => Err(ParseError::unexpected_token("attribute argument", &token)),
+        // Parse complex expressions by collecting tokens until we hit a delimiter
+        loop {
+            let token = self.tokens.peek();
+
+            match &token.token_type {
+                TokenType::Comma if paren_depth == 0 && bracket_depth == 0 => break,
+                TokenType::RightParen if paren_depth == 0 => break,
+                TokenType::RightBracket if bracket_depth == 0 => break,
+                TokenType::Eof => break,
+
+                TokenType::LeftParen => {
+                    paren_depth += 1;
+                    result.push('(');
+                    self.tokens.consume();
+                }
+                TokenType::RightParen => {
+                    paren_depth -= 1;
+                    result.push(')');
+                    self.tokens.consume();
+                }
+                TokenType::LeftBracket => {
+                    bracket_depth += 1;
+                    result.push('[');
+                    self.tokens.consume();
+                }
+                TokenType::RightBracket => {
+                    bracket_depth -= 1;
+                    result.push(']');
+                    self.tokens.consume();
+                }
+
+                TokenType::Identifier(name) => {
+                    if !result.is_empty() {
+                        result.push(' ');
+                    }
+                    result.push_str(name);
+                    self.tokens.consume();
+                }
+                TokenType::StringLiteral(s) => {
+                    if !result.is_empty() {
+                        result.push(' ');
+                    }
+                    result.push_str(&format!("\"{}\"", s));
+                    self.tokens.consume();
+                }
+                TokenType::IntegerLiteral(i) => {
+                    if !result.is_empty() {
+                        result.push(' ');
+                    }
+                    result.push_str(&i.to_string());
+                    self.tokens.consume();
+                }
+                TokenType::BooleanLiteral(b) => {
+                    if !result.is_empty() {
+                        result.push(' ');
+                    }
+                    result.push_str(&b.to_string());
+                    self.tokens.consume();
+                }
+                TokenType::Equal => {
+                    result.push_str(" = ");
+                    self.tokens.consume();
+                }
+                TokenType::Comma => {
+                    result.push_str(", ");
+                    self.tokens.consume();
+                }
+                _ => {
+                    // For any other token, just add it as a string representation
+                    if !result.is_empty() {
+                        result.push(' ');
+                    }
+                    result.push_str(&format!("{:?}", token.token_type));
+                    self.tokens.consume();
                 }
             }
+        }
+
+        if result.is_empty() {
+            Err(ParseError::unexpected_token(
+                "attribute argument",
+                self.tokens.peek(),
+            ))
+        } else {
+            Ok(result.trim().to_string())
         }
     }
 
