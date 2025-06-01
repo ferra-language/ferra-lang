@@ -163,21 +163,21 @@ jobs:
   },
   {
     "name": "empty_function_parse",
-    "unit": "µs", 
+    "unit": "us", 
     "value": 1.17,
     "range": "± 0.1",
     "extra": "Empty function parsing performance"
   },
   {
     "name": "function_with_statement",
-    "unit": "µs",
+    "unit": "us",
     "value": 2.64,
     "range": "± 0.2", 
     "extra": "Function with statement parsing"
   },
   {
     "name": "complex_expression_parse",
-    "unit": "µs",
+    "unit": "us",
     "value": 6.48,
     "range": "± 0.5",
     "extra": "Complex expression parsing performance"
