@@ -9,8 +9,8 @@
 use ferra_parser::{
     test_all_literals, test_all_operators, test_precedence_matrix, test_statement_types,
     test_utils::{
-        self, assertions, enhanced_fixtures, ExpectedExpressionType,
-        performance::measure_parse_time,
+        self, assertions, enhanced_fixtures, performance::measure_parse_time,
+        ExpectedExpressionType,
     },
     token::TokenType,
 };
@@ -152,7 +152,7 @@ fn test_parameterized_precedence() {
 #[test]
 fn test_expression_type_matrix() {
     let arena = test_utils::test_arena();
-    
+
     let test_cases = vec![
         // (source, expected_type) - Only simple expressions that work with current lexer
         ("42", ExpectedExpressionType::Literal),
@@ -160,12 +160,12 @@ fn test_expression_type_matrix() {
         ("x + y", ExpectedExpressionType::Binary),
         ("-x", ExpectedExpressionType::Unary),
     ];
-    
+
     for (source, expected_type) in test_cases {
         let tokens = test_utils::mock_tokens_from_source(source);
         let mut parser = test_utils::test_expression_parser(&arena, tokens);
         let result = parser.parse_expression(0);
-        
+
         if let Ok(expr) = result {
             assertions::assert_expression_type(expr, expected_type);
         }
@@ -292,15 +292,13 @@ fn test_performance_utilities() {
     let arena = test_utils::test_arena();
     let tokens = test_utils::mock_tokens_from_source("1 + 2 * 3");
     let mut parser = test_utils::test_expression_parser(&arena, tokens);
-    
+
     // Test time measurement
-    let (result, duration) = measure_parse_time(|| {
-        parser.parse_expression(0)
-    });
-    
+    let (result, duration) = measure_parse_time(|| parser.parse_expression(0));
+
     assert!(result.is_ok());
     assert!(duration.as_millis() < 1000); // Should be very fast
-    
+
     // Test time assertion
     let expr = result.unwrap();
     assertions::assert_expression_type(expr, ExpectedExpressionType::Binary);
