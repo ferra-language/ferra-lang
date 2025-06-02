@@ -32,7 +32,7 @@ use ferra_parser::{
 #[test]
 fn test_complex_cross_module_integration() {
     let arena = Arena::new();
-    
+
     // Test complex function with generics and constraints
     let tokens = VecTokenStream::from_token_types(vec![
         TokenType::Fn,
@@ -55,9 +55,9 @@ fn test_complex_cross_module_integration() {
         TokenType::RightBrace,
         TokenType::Eof,
     ]);
-    
+
     let mut parser = ProgramParser::new(&arena, tokens);
-    
+
     // Test program parser with complex type definitions
     let result = parser.parse_compilation_unit();
     match result {
@@ -79,7 +79,7 @@ fn test_complex_cross_module_integration() {
 #[test]
 fn test_deep_nested_block_boundaries() {
     let arena = Arena::new();
-    
+
     // Test deeply nested blocks with control flow
     let tokens = VecTokenStream::from_token_types(vec![
         TokenType::Fn,
@@ -111,9 +111,9 @@ fn test_deep_nested_block_boundaries() {
         TokenType::RightBrace,
         TokenType::Eof,
     ]);
-    
+
     let mut parser = ProgramParser::new(&arena, tokens);
-    
+
     // Test block parser with extreme nesting
     let result = parser.parse_compilation_unit();
     match result {
@@ -135,7 +135,7 @@ fn test_deep_nested_block_boundaries() {
 #[test]
 fn test_complex_type_system_integration() {
     let arena = Arena::new();
-    
+
     // Test complex function signatures with multiple type parameters
     let tokens = VecTokenStream::from_token_types(vec![
         TokenType::Fn,
@@ -163,9 +163,9 @@ fn test_complex_type_system_integration() {
         TokenType::RightBrace,
         TokenType::Eof,
     ]);
-    
+
     let mut parser = ProgramParser::new(&arena, tokens);
-    
+
     // Test type parser with complex generic scenarios
     let result = parser.parse_compilation_unit();
     match result {
@@ -173,7 +173,10 @@ fn test_complex_type_system_integration() {
             println!("Complex type system integration succeeded");
         }
         Err(errors) => {
-            println!("Complex type system error paths tested: {} errors", errors.len());
+            println!(
+                "Complex type system error paths tested: {} errors",
+                errors.len()
+            );
             assert!(!errors.is_empty());
         }
     }
@@ -186,7 +189,7 @@ fn test_complex_type_system_integration() {
 #[test]
 fn test_pratt_parser_precedence_boundaries() {
     let arena = Arena::new();
-    
+
     // Test complex operator precedence chains
     let tokens = VecTokenStream::from_token_types(vec![
         TokenType::Let,
@@ -204,9 +207,9 @@ fn test_pratt_parser_precedence_boundaries() {
         TokenType::Semicolon,
         TokenType::Eof,
     ]);
-    
+
     let mut parser = StatementParser::new(&arena, tokens);
-    
+
     // Test pratt parser with complex precedence scenarios
     let result = parser.parse_statement();
     match result {
@@ -227,7 +230,7 @@ fn test_pratt_parser_precedence_boundaries() {
 #[test]
 fn test_statement_parser_control_flow_integration() {
     let arena = Arena::new();
-    
+
     // Test complex control flow with nested patterns
     let tokens = VecTokenStream::from_token_types(vec![
         TokenType::While,
@@ -251,9 +254,9 @@ fn test_statement_parser_control_flow_integration() {
         TokenType::RightBrace,
         TokenType::Eof,
     ]);
-    
+
     let mut parser = StatementParser::new(&arena, tokens);
-    
+
     // Test statement parser with complex control flow
     let result = parser.parse_statement();
     match result {
@@ -274,7 +277,7 @@ fn test_statement_parser_control_flow_integration() {
 #[test]
 fn test_generic_parser_constraint_satisfaction() {
     let arena = Arena::new();
-    
+
     // Test generic functions with constraints
     let tokens = VecTokenStream::from_token_types(vec![
         TokenType::Fn,
@@ -291,9 +294,9 @@ fn test_generic_parser_constraint_satisfaction() {
         TokenType::RightBrace,
         TokenType::Eof,
     ]);
-    
+
     let mut parser = ProgramParser::new(&arena, tokens);
-    
+
     // Test generic parser with complex constraints
     let result = parser.parse_compilation_unit();
     match result {
@@ -316,7 +319,7 @@ fn test_generic_parser_constraint_satisfaction() {
 #[test]
 fn test_program_parser_large_scale_integration() {
     let arena = Arena::new();
-    
+
     // Test multiple functions with different signatures
     let tokens = VecTokenStream::from_token_types(vec![
         // First function
@@ -331,7 +334,7 @@ fn test_program_parser_large_scale_integration() {
         TokenType::IntegerLiteral(1),
         TokenType::Semicolon,
         TokenType::RightBrace,
-        // Second function  
+        // Second function
         TokenType::Fn,
         TokenType::Identifier("function_two".to_string()),
         TokenType::LeftParen,
@@ -363,19 +366,26 @@ fn test_program_parser_large_scale_integration() {
         TokenType::RightBrace,
         TokenType::Eof,
     ]);
-    
+
     let mut parser = ProgramParser::new(&arena, tokens);
-    
+
     // Test program parser with large-scale integration
     let result = parser.parse_compilation_unit();
     match result {
         Ok(unit) => {
-            println!("Large-scale program integration succeeded with {} items", unit.items.len());
+            println!(
+                "Large-scale program integration succeeded with {} items",
+                unit.items.len()
+            );
         }
         Err(errors) => {
-            println!("Large-scale integration error paths: {} errors", errors.len());
+            println!(
+                "Large-scale integration error paths: {} errors",
+                errors.len()
+            );
             for (i, error) in errors.iter().enumerate() {
-                if i < 3 {  // Limit output for readability
+                if i < 3 {
+                    // Limit output for readability
                     println!("  Error {}: {}", i + 1, error);
                 }
             }
@@ -390,33 +400,68 @@ fn test_program_parser_large_scale_integration() {
 #[test]
 fn test_parser_boundary_limits() {
     let arena = Arena::new();
-    
+
     // Test various boundary conditions with actual token sequences
     let boundary_test_cases = vec![
         // Empty function
-        vec![TokenType::Fn, TokenType::Identifier("empty".to_string()), TokenType::LeftParen, TokenType::RightParen, TokenType::LeftBrace, TokenType::RightBrace, TokenType::Eof],
+        vec![
+            TokenType::Fn,
+            TokenType::Identifier("empty".to_string()),
+            TokenType::LeftParen,
+            TokenType::RightParen,
+            TokenType::LeftBrace,
+            TokenType::RightBrace,
+            TokenType::Eof,
+        ],
         // Single statement
-        vec![TokenType::Let, TokenType::Identifier("x".to_string()), TokenType::Equal, TokenType::IntegerLiteral(42), TokenType::Semicolon, TokenType::Eof],
+        vec![
+            TokenType::Let,
+            TokenType::Identifier("x".to_string()),
+            TokenType::Equal,
+            TokenType::IntegerLiteral(42),
+            TokenType::Semicolon,
+            TokenType::Eof,
+        ],
         // Unbalanced braces (should error)
-        vec![TokenType::LeftBrace, TokenType::LeftBrace, TokenType::RightBrace, TokenType::Eof],
+        vec![
+            TokenType::LeftBrace,
+            TokenType::LeftBrace,
+            TokenType::RightBrace,
+            TokenType::Eof,
+        ],
         // Missing semicolon (should error)
-        vec![TokenType::Let, TokenType::Identifier("x".to_string()), TokenType::Equal, TokenType::IntegerLiteral(42), TokenType::Eof],
+        vec![
+            TokenType::Let,
+            TokenType::Identifier("x".to_string()),
+            TokenType::Equal,
+            TokenType::IntegerLiteral(42),
+            TokenType::Eof,
+        ],
         // Incomplete function (should error)
-        vec![TokenType::Fn, TokenType::Identifier("incomplete".to_string()), TokenType::LeftParen, TokenType::Eof],
+        vec![
+            TokenType::Fn,
+            TokenType::Identifier("incomplete".to_string()),
+            TokenType::LeftParen,
+            TokenType::Eof,
+        ],
     ];
-    
+
     for (i, token_sequence) in boundary_test_cases.iter().enumerate() {
         let tokens = VecTokenStream::from_token_types(token_sequence.clone());
         let mut parser = ProgramParser::new(&arena, tokens);
         let result = parser.parse_compilation_unit();
-        
+
         match result {
             Ok(_) => {
                 println!("Boundary test {} succeeded: case {}", i, i);
             }
             Err(errors) => {
-                println!("Boundary test {} error recovery: {} errors for case {}", 
-                       i, errors.len(), i);
+                println!(
+                    "Boundary test {} error recovery: {} errors for case {}",
+                    i,
+                    errors.len(),
+                    i
+                );
                 assert!(!errors.is_empty(), "Should have error details");
             }
         }

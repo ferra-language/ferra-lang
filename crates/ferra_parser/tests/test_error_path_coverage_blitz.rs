@@ -11,7 +11,6 @@
 
 use ferra_parser::{
     ast::Arena,
-    error::{ErrorRecovery, ParseError},
     pratt::parser::PrattParser,
     program::parser::ProgramParser,
     statement::parser::StatementParser,
