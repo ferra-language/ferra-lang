@@ -400,7 +400,7 @@ fn test_parser_boundary_limits() {
     let arena = Arena::new();
 
     // Test various boundary conditions with actual token sequences
-    let boundary_test_cases = vec![
+    let boundary_test_cases = [
         // Empty function
         vec![
             TokenType::Fn,
