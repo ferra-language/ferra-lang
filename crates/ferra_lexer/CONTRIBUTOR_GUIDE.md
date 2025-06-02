@@ -12,7 +12,7 @@ This guide provides comprehensive instructions for contributing to the Ferra Lex
 
 ### Project Status
 - **Phase 1 Complete**: All core lexical analysis features implemented
-- **115+ Tests**: Comprehensive test coverage across all token types
+- **116 Tests Total**: (0 unit tests + 116 integration tests)
 - **Production Ready**: Unicode-aware, high-performance lexing
 - **Stable API**: Well-defined token stream interface for parser integration
 
@@ -52,7 +52,7 @@ cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 
 # Run benchmarks
-cargo bench
+cargo bench # Note: Requires benches/ directory and benchmark targets to be defined.
 ```
 
 ---
@@ -64,16 +64,16 @@ cargo bench
 ```
 ferra_lexer/
 ├── src/
-│   ├── token/         # Token type definitions
-│   ├── lexer/         # Core lexing logic
-│   ├── error/         # Error types and handling
-│   ├── unicode/       # Unicode support utilities
-│   ├── keywords/      # Keyword recognition
-│   └── lib.rs         # Public API surface
-├── tests/             # Integration tests (115 tests)
-├── benches/           # Performance benchmarks
-├── examples/          # Usage examples
-└── docs/              # Documentation
+│   ├── token/         # Token type definitions (logical module)
+│   ├── lexer/         # Core lexing logic (logical module)
+│   ├── error/         # Error types and handling (logical module)
+│   ├── unicode/       # Unicode support utilities (logical module)
+│   ├── keywords/      # Keyword recognition (logical module)
+│   └── lib.rs         # Public API surface and main module
+├── tests/             # Integration tests (116 tests in `tests/` directory)
+# Note: `benches/`, `examples/`, and `docs/` specific to `ferra_lexer` are not currently present directly under `crates/ferra_lexer/`.
+# Project-level documentation may be in the root `/docs` directory.
+# Benchmarks and examples might be managed at the workspace level.
 ```
 
 ### Key Abstractions
@@ -156,7 +156,7 @@ cargo test --all  # Full test suite
 
 5. **Check Performance Impact**
 ```bash
-cargo bench  # Run benchmarks
+cargo bench  # Run benchmarks (Requires benches/ directory and benchmark targets to be defined)
 # Check for performance regressions
 ```
 
@@ -508,7 +508,7 @@ fn test_unicode_support() {
 #### Adding Benchmarks
 
 ```rust
-// In benches/lexer_benchmarks.rs
+// In benches/lexer_benchmarks.rs (Note: This directory needs to be created for ferra_lexer)
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
 
 fn tokenization_benchmark(c: &mut Criterion) {

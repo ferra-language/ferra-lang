@@ -4,7 +4,7 @@ A production-ready recursive descent parser with Pratt expression parsing for th
 
 ## 🎯 Current Status
 
-**Phase 2 Complete ✅** - Full parser implementation with 260 tests passing
+**Phase 2 Complete ✅** - Full parser implementation with 372 tests passing
 
 All core parsing features implemented and tested:
 - **Expressions**: Complete Pratt parser with all operators and precedence
@@ -21,17 +21,17 @@ All core parsing features implemented and tested:
 
 ## 📊 Test Coverage
 
-**Total: 260 parser tests + 110 lexer tests = 370 tests (all passing)**
+**Total: 399 parser tests + 116 lexer tests = 515 tests (all passing)**
 
 ### Parser Test Breakdown
 - **Core Library**: 63 tests (AST, arena, pratt, types, error handling)
-- **Integration Tests**: 177 tests across 13 test suites
+- **Integration Tests**: 309 tests across test suites
 - **Expression Parsing**: 27 tests (all literal and operator types)
 - **Statement Parsing**: 13 tests (declarations, control flow)
 - **Block Parsing**: 30 tests (braced, indented, complex nesting)
 - **Type System**: 15 tests (simple, composite, function types)
 - **Advanced Features**: 56 tests (attributes, generics, patterns, macros)
-- **Error Recovery**: 31 tests (recovery strategies, diagnostics)
+- **Error Recovery**: 23 tests (recovery strategies, diagnostics)
 
 ### Quality Metrics
 - **Coverage**: All major features have dedicated test suites

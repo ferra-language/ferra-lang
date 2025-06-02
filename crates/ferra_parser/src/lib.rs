@@ -49,6 +49,10 @@ pub mod statement;
 pub mod token;
 pub mod types;
 
+// Test utilities (available for tests and development)
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+pub mod test_utils;
+
 // Re-export commonly used types
 pub use ast::{Arena, CompilationUnit, Expression, Item, Statement};
 pub use error::{ParseError, ParseResult};

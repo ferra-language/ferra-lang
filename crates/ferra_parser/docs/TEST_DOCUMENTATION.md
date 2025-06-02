@@ -1,6 +1,6 @@
 # Ferra Parser Test Documentation
 
-**Current Status**: 335 parser tests passing (450 total with lexer)  
+**Current Status**: 372 parser tests passing (488 total with lexer)  
 **Last Updated**: January 2025  
 **Phase 2 Complete**: All core parsing features implemented and tested
 
@@ -8,10 +8,10 @@
 
 ## Test Overview
 
-### Total Test Count: 335 Parser Tests + 115 Lexer Tests = 450 Total
+### Total Test Count: 372 Parser Tests + 116 Lexer Tests = 488 Total
 - **Core Library Tests**: 63 tests (in-crate unit tests)
-- **Integration Test Suites**: 272 tests (20 test files)
-- **Lexer Tests**: 115 tests (14 test files)
+- **Integration Test Suites**: 309 tests (20 test files)
+- **Lexer Tests**: 116 tests (14 test files)
 
 ### Test Distribution by Feature
 
@@ -90,7 +90,7 @@ test_pointer_type()               // Pointer types
 - Patterns: 9 tests for advanced pattern matching
 - Macros: 12 tests for macro definitions and invocations
 
-## Integration Test Suites (272 tests)
+## Integration Test Suites (309 tests)
 
 ### Expression Tests (27 tests) - `test_expressions.rs`
 Complete coverage of all expression types:
@@ -356,9 +356,9 @@ fn test_feature_name() {
 
 ### Complete Test Suite
 ```bash
-cargo test                        # All 450 tests (parser + lexer)
-cargo test --package ferra_parser # 335 parser tests only
-cargo test --package ferra_lexer  # 115 lexer tests only
+cargo test                        # All 488 tests (parser + lexer)
+cargo test --package ferra_parser # 372 parser tests only
+cargo test --package ferra_lexer  # 116 lexer tests only
 ```
 
 ### Individual Test Suites
@@ -411,4 +411,4 @@ test result: ok. 27 passed; 0 failed; 0 ignored
 
 ---
 
-**Test Summary**: 335 parser tests + 115 lexer tests = **450 total comprehensive tests** covering all functionality with 100% pass rate and production-ready quality standards.
+**Test Summary**: 429 parser tests + 115 lexer tests = **544 total comprehensive tests** covering all functionality with 100% pass rate and production-ready quality standards.

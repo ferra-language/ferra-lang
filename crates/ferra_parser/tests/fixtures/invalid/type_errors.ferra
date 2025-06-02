@@ -1,0 +1,70 @@
+// Type error examples for error recovery testing
+// These should all produce parse errors but not crash the parser
+
+// Missing type annotations
+let x: = 42;
+let y: ;
+
+// Invalid type syntax
+let a: int[;
+let b: (string,;
+let c: fn(;
+
+// Malformed function types
+let func1: fn() ->;
+let func2: fn( -> i32;
+let func3: fn(i32) -> ;
+
+// Invalid array types
+let arr1: [;
+let arr2: [i32;
+let arr3: ]i32[;
+
+// Malformed tuple types
+let tuple1: (;
+let tuple2: ,i32);
+let tuple3: (i32,;
+
+// Invalid pointer types
+let ptr1: *;
+let ptr2: **;
+let ptr3: *i32*;
+
+// Malformed generic types
+let gen1: Vec<;
+let gen2: HashMap<K,;
+let gen3: Box<>>;
+
+// Invalid where clauses
+data Test<T> where {
+    value: T,
+}
+
+data Test2<T> where T: {
+    value: T,
+}
+
+// Missing semicolons in variable declarations
+let incomplete1: i32
+let incomplete2: String
+
+// Invalid function parameter types
+fn bad_func1(param: ) {
+}
+
+fn bad_func2(param1: i32, param2: ) -> String {
+}
+
+// Malformed return types
+fn bad_return1() -> {
+}
+
+fn bad_return2() -> i32, String {
+}
+
+// Invalid extern function types
+extern "C" {
+    fn bad_extern1() -> ;
+    fn bad_extern2(: i32);
+    fn bad_extern3( -> i32;
+} 

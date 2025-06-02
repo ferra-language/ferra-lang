@@ -1,0 +1,87 @@
+// Data class examples and test cases
+// Tests comprehensive data class parsing
+
+// Basic data class
+data Person {
+    name: String,
+    age: i32,
+}
+
+// Public data class
+pub data PublicPerson {
+    name: String,
+    age: i32,
+}
+
+// Data class with mixed field visibility
+pub data MixedVisibility {
+    pub name: String,
+    age: i32,
+    pub email: String,
+    private_field: bool,
+}
+
+// Data class with complex field types
+data ComplexData {
+    numbers: [i32],
+    coordinates: (f64, f64),
+    callback: fn(i32) -> String,
+    nested_data: Person,
+}
+
+// Data class with attributes
+#[derive(Debug, Clone)]
+data AttributedData {
+    #[attr1]
+    field1: String,
+    
+    #[attr2(value = "test")]
+    field2: i32,
+}
+
+// Generic data class
+data GenericPair<T, U> {
+    first: T,
+    second: U,
+}
+
+// Data class with where clause
+data ConstrainedData<T> where T: Clone + Debug {
+    value: T,
+    metadata: String,
+}
+
+// Nested data classes
+data Address {
+    street: String,
+    city: String,
+    zip: String,
+}
+
+data Customer {
+    personal: Person,
+    address: Address,
+    orders: [Order],
+}
+
+data Order {
+    id: i32,
+    items: [String],
+    total: f64,
+}
+
+// Data class with function types
+data EventHandler {
+    on_click: fn(),
+    on_hover: fn(x: i32, y: i32),
+    on_error: fn(String) -> bool,
+}
+
+// Empty data class
+data Empty {
+}
+
+// Single field data class
+data Wrapper {
+    value: String,
+} 

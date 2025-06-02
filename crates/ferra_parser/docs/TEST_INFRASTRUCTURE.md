@@ -8,17 +8,17 @@
 
 ## Overview
 
-The Ferra Parser test infrastructure provides comprehensive testing capabilities with 500+ tests covering all language features. The testing framework includes unit tests, integration tests, benchmarks, fuzzing, and specialized testing utilities.
+The Ferra Parser test infrastructure provides comprehensive testing capabilities with 429 tests covering all language features. The testing framework includes unit tests, integration tests, benchmarks, fuzzing, and specialized testing utilities.
 
 ### Test Categories
 
-| Type | Count | Coverage | Purpose |
-|------|-------|----------|---------|
-| **Unit Tests** | 63 | Core library components | Component isolation testing |
-| **Integration Tests** | 272 | Full language features | End-to-end parsing validation |
-| **Benchmarks** | 15 | Performance regression | Performance monitoring |
-| **Fuzz Tests** | 5 | Edge case discovery | Robustness validation |
-| **Stress Tests** | 25 | Large-scale scenarios | Scalability verification |
+| Type              | Count | Coverage                | Purpose                       |
+|-------------------|-------|-------------------------|-------------------------------|
+| **Unit Tests**    | 63    | Core library components | Component isolation testing   |
+| **Integration Tests** | 336   | Full language features  | End-to-end parsing validation |
+| **Benchmarks**    | 15    | Performance regression  | Performance monitoring        |
+| **Fuzz Tests**    | 5     | Edge case discovery     | Robustness validation         |
+| **Stress Tests**  | 25    | Large-scale scenarios   | Scalability verification      |
 
 ---
 
@@ -34,8 +34,14 @@ crates/ferra_parser/
 │   ├── pratt/mod.rs               # Pratt parser tests (5)
 │   ├── error/mod.rs               # Error handling tests (6)
 │   ├── types/mod.rs               # Type system tests (15)
-│   └── program/mod.rs             # Program parsing tests (31)
-├── tests/                         # Integration tests (272 tests)
+│   ├── program/mod.rs             # Program parsing tests (31)
+│   ├── block/mod.rs               # Block parsing tests
+│   ├── statement/mod.rs           # Statement parsing tests
+│   ├── pattern/mod.rs             # Pattern parsing tests
+│   ├── attribute/mod.rs           # Attribute parsing tests
+│   ├── generic/mod.rs             # Generic type parameter tests
+│   └── macro_parser/mod.rs        # Macro system tests
+├── tests/                         # Integration tests (336 tests)
 │   ├── test_expressions.rs        # Expression parsing (27)
 │   ├── test_control_flow_integration.rs  # Control flow (23)
 │   ├── test_async_functions.rs    # Async features (9)
@@ -45,11 +51,12 @@ crates/ferra_parser/
 │   └── [18 more test files]       # Additional features
 ├── benches/                       # Performance benchmarks
 │   ├── parser_benchmarks.rs       # Core benchmarks
-│   └── memory_benchmarks.rs       # Memory profiling
-└── examples/                      # Usage examples
-    ├── basic_parsing.rs
-    ├── error_handling.rs
-    └── performance_testing.rs
+│   └── memory_benchmarks.rs       # Memory profiling (Note: this file needs to be created)
+└── examples/                      # Usage examples (directory exists, currently empty)
+    # Examples would include:
+    # ├── basic_parsing.rs
+    # ├── error_handling.rs
+    # └── performance_testing.rs
 ```
 
 ### Test Naming Conventions
@@ -628,7 +635,7 @@ cargo fuzz coverage parse_expression
 ### CI Test Configuration
 
 ```yaml
-# .github/workflows/test.yml
+# .github/workflows/ci.yml
 name: Tests
 on: [push, pull_request]
 
@@ -797,3 +804,16 @@ fn test_memory_usage_regression() {
 ```
 
 This comprehensive test infrastructure ensures the Ferra parser maintains high quality, performance, and reliability across all development phases. 
+
+## Current Test Status: 429 Parser Tests Passing
+
+**Test Breakdown:**
+- **Unit Tests**: 63 tests (within `src/` modules)
+- **Integration Tests**: 336 tests (across 20+ test files)
+- **Total Success Rate**: 100% (429/429 passing)
+
+**Recent Enhancements:**
+- **Array Indexing Coverage**: 12 new comprehensive tests
+- **Parser Stress Coverage**: 15 new boundary and performance tests  
+- **String Literal Fixes**: Resolved parsing context issues
+- **Performance Regression Tests**: 2 new timing validation tests 

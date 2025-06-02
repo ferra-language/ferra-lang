@@ -3,6 +3,10 @@ name = "ferra_parser"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["test-utils"]
+test-utils = []
+
 [dependencies]
 # Token stream and lexer output
 ferra_lexer = { path = "../ferra_lexer" }

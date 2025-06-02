@@ -1,0 +1,60 @@
+// Async function examples and test cases
+// Tests for Phase 2.3.6: Async Function Implementation
+
+// Basic async function
+async fn basic_async() {
+    return 42;
+}
+
+// Public async function
+pub async fn public_async_fetch() {
+    let data = fetch_data();
+    return data;
+}
+
+// Unsafe async function
+unsafe async fn dangerous_async_operation() {
+    let ptr = 0x1000 as *mut i32;
+    *ptr = 42;
+}
+
+// Public unsafe async function
+pub unsafe async fn public_dangerous_async() {
+    unsafe_operation();
+    async_cleanup();
+}
+
+// Async function with parameters
+async fn async_with_params(url: String, timeout: i32) -> String {
+    let response = await http_get(url, timeout);
+    return response;
+}
+
+// Async function with complex return type
+async fn complex_async_return() -> (String, i32, bool) {
+    let result = await complex_operation();
+    return (result.message, result.code, result.success);
+}
+
+// Async function with async block
+async fn async_with_block() {
+    async {
+        let value = await compute();
+        process_value(value);
+    };
+}
+
+// Multiple async functions in sequence
+async fn first_operation() -> i32 {
+    return 10;
+}
+
+async fn second_operation(input: i32) -> i32 {
+    return input * 2;
+}
+
+async fn chained_operations() -> i32 {
+    let first = await first_operation();
+    let second = await second_operation(first);
+    return second;
+} 

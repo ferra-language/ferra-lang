@@ -1,0 +1,110 @@
+// Control flow examples and test cases
+// Tests for comprehensive control flow parsing
+
+fn control_flow_examples() {
+    // Basic if statement
+    if true {
+        let x = 1;
+    }
+    
+    // If-else statement
+    if condition {
+        do_something();
+    } else {
+        do_something_else();
+    }
+    
+    // If-else if-else chain
+    if x > 10 {
+        handle_large();
+    } else if x > 5 {
+        handle_medium();
+    } else {
+        handle_small();
+    }
+    
+    // While loop
+    while counter < 10 {
+        counter = counter + 1;
+        process_item(counter);
+    }
+    
+    // For loop with range
+    for i in 0..10 {
+        array[i] = i * 2;
+    }
+    
+    // For loop with iterator
+    for item in collection {
+        process(item);
+    }
+    
+    // Nested control flow
+    for i in 0..5 {
+        while condition(i) {
+            if should_break(i) {
+                break;
+            }
+            if should_continue(i) {
+                continue;
+            }
+            work(i);
+        }
+    }
+    
+    // Complex conditions
+    if (x > 0 && y < 100) || (z == 42) {
+        complex_operation();
+    }
+    
+    // Control flow with expressions
+    let result = if condition {
+        calculate_a()
+    } else {
+        calculate_b()
+    };
+    
+    // Early return
+    if error_condition {
+        return error_value;
+    }
+    
+    // Multiple returns
+    if case_a {
+        return value_a;
+    } else if case_b {
+        return value_b;
+    } else {
+        return default_value;
+    }
+}
+
+// Labeled breaks and continues
+fn labeled_control_flow() {
+    'outer: for i in 0..10 {
+        for j in 0..10 {
+            if should_break_outer(i, j) {
+                break 'outer;
+            }
+            if should_continue_outer(i, j) {
+                continue 'outer;
+            }
+            process(i, j);
+        }
+    }
+}
+
+// Unsafe blocks with control flow
+unsafe fn unsafe_control_flow() {
+    if dangerous_condition() {
+        unsafe {
+            dangerous_operation();
+        }
+    }
+    
+    while unsafe_condition() {
+        unsafe {
+            unsafe_work();
+        }
+    }
+} 
