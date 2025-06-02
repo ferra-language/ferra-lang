@@ -18,10 +18,10 @@
 
 use ferra_parser::{
     ast::Arena,
+    block::parser::BlockParser,
     pratt::parser::PrattParser,
     program::ProgramParser,
     statement::parser::StatementParser,
-    block::parser::BlockParser,
     token::{TokenType, VecTokenStream},
 };
 
@@ -32,7 +32,7 @@ use ferra_parser::{
 #[test]
 fn test_pratt_parser_micro_targeting() {
     let arena = Arena::new();
-    
+
     // Test complex ternary-like expressions (conditional expressions)
     let tokens = VecTokenStream::from_token_types(vec![
         TokenType::If,
@@ -128,7 +128,7 @@ fn test_pratt_parser_micro_targeting() {
 #[test]
 fn test_program_parser_micro_targeting() {
     let arena = Arena::new();
-    
+
     // Test extern "C" blocks with complex function signatures
     let tokens = VecTokenStream::from_token_types(vec![
         TokenType::Extern,
@@ -260,7 +260,7 @@ fn test_statement_parser_micro_targeting() {
         TokenType::Comma,
         TokenType::Identifier("second".to_string()),
         TokenType::Comma,
-        TokenType::Identifier("_".to_string()),  // Use underscore as identifier
+        TokenType::Identifier("_".to_string()), // Use underscore as identifier
         TokenType::RightParen,
         TokenType::Equal,
         TokenType::LeftParen,
@@ -298,7 +298,7 @@ fn test_statement_parser_micro_targeting() {
         TokenType::FatArrow,
         TokenType::StringLiteral("large".to_string()),
         TokenType::Comma,
-        TokenType::Identifier("_".to_string()),  // Use underscore as identifier
+        TokenType::Identifier("_".to_string()), // Use underscore as identifier
         TokenType::FatArrow,
         TokenType::StringLiteral("default".to_string()),
         TokenType::RightBrace,
@@ -586,7 +586,7 @@ fn test_performance_critical_path_stress() {
         TokenType::Identifier("complex_result".to_string()),
         TokenType::Equal,
     ];
-    
+
     // Build a deeply nested arithmetic expression: ((((1 + 2) * 3) + 4) * 5) + 6...
     for i in 1..=10 {
         if i > 1 {
@@ -598,13 +598,13 @@ fn test_performance_critical_path_stress() {
         tokens.push(TokenType::IntegerLiteral(i + 1));
         tokens.push(TokenType::RightParen);
     }
-    
+
     tokens.push(TokenType::Semicolon);
     tokens.push(TokenType::Eof);
-    
+
     let token_stream = VecTokenStream::from_token_types(tokens);
     let mut parser = StatementParser::new(&arena, token_stream);
-    
+
     match parser.parse_statement() {
         Ok(_) => println!("✅ Performance stress test passed"),
         Err(_) => println!("✅ Performance stress error path tested"),
@@ -616,7 +616,7 @@ fn test_performance_critical_path_stress() {
         TokenType::Identifier("many_params".to_string()),
         TokenType::LeftParen,
     ];
-    
+
     for i in 1..=20 {
         if i > 1 {
             tokens.push(TokenType::Comma);
@@ -625,7 +625,7 @@ fn test_performance_critical_path_stress() {
         tokens.push(TokenType::Colon);
         tokens.push(TokenType::Identifier("i32".to_string()));
     }
-    
+
     tokens.extend(vec![
         TokenType::RightParen,
         TokenType::LeftBrace,
@@ -635,10 +635,10 @@ fn test_performance_critical_path_stress() {
         TokenType::RightBrace,
         TokenType::Eof,
     ]);
-    
+
     let token_stream = VecTokenStream::from_token_types(tokens);
     let mut parser = StatementParser::new(&arena, token_stream);
-    
+
     match parser.parse_statement() {
         Ok(_) => println!("✅ Large parameter list stress test passed"),
         Err(_) => println!("✅ Parameter list stress error path tested"),
@@ -676,7 +676,7 @@ fn test_advanced_pattern_matching_edge_cases() {
         TokenType::FatArrow,
         TokenType::StringLiteral("complex pattern".to_string()),
         TokenType::Comma,
-        TokenType::Identifier("_".to_string()),  // Use underscore as identifier
+        TokenType::Identifier("_".to_string()), // Use underscore as identifier
         TokenType::FatArrow,
         TokenType::StringLiteral("default".to_string()),
         TokenType::RightBrace,
@@ -717,7 +717,7 @@ fn test_advanced_pattern_matching_edge_cases() {
         TokenType::FatArrow,
         TokenType::StringLiteral("even teens".to_string()),
         TokenType::Comma,
-        TokenType::Identifier("_".to_string()),  // Use underscore as identifier
+        TokenType::Identifier("_".to_string()), // Use underscore as identifier
         TokenType::FatArrow,
         TokenType::StringLiteral("other".to_string()),
         TokenType::RightBrace,
