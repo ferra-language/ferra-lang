@@ -585,7 +585,7 @@ fn test_error_recovery_enhancement_coverage() {
                 "✅ Multi-level error recovery tested: {} errors",
                 errors.len()
             );
-            assert!(errors.len() >= 1, "Should have collected multiple errors");
+            assert!(!errors.is_empty(), "Should have collected multiple errors");
         }
     }
 
