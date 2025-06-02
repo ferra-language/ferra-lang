@@ -1,7 +1,7 @@
 //! Simple integration tests to improve code coverage
 
 use ferra_parser::{
-    ast::{Arena, BinaryOperator, Expression, Literal, UnaryOperator},
+    ast::Arena,
     pratt::parser::PrattParser,
     program::parser::ProgramParser,
     statement::parser::StatementParser,

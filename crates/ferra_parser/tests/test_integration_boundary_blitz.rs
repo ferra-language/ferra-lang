@@ -18,11 +18,9 @@
 
 use ferra_parser::{
     ast::Arena,
-    pratt::parser::PrattParser,
     program::ProgramParser,
     statement::parser::StatementParser,
     token::{TokenType, VecTokenStream},
-    Parser,
 };
 
 /// Test 1: Complex Cross-Module Integration Patterns

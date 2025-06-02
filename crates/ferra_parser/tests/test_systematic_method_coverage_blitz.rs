@@ -18,7 +18,6 @@
 
 use ferra_parser::{
     ast::Arena,
-    block::parser::BlockParser,
     pratt::parser::PrattParser,
     program::ProgramParser,
     statement::parser::StatementParser,
@@ -32,7 +31,7 @@ use ferra_parser::{
 #[test]
 fn test_deep_program_parser_method_coverage() {
     let arena = Arena::new();
-    
+
     // Test complex extern "C" blocks with static declarations
     let tokens = VecTokenStream::from_token_types(vec![
         TokenType::Extern,
@@ -582,7 +581,10 @@ fn test_error_recovery_enhancement_coverage() {
     match parser.parse_compilation_unit() {
         Ok(_) => println!("✅ Multi-level error recovery succeeded"),
         Err(errors) => {
-            println!("✅ Multi-level error recovery tested: {} errors", errors.len());
+            println!(
+                "✅ Multi-level error recovery tested: {} errors",
+                errors.len()
+            );
             assert!(errors.len() >= 1, "Should have collected multiple errors");
         }
     }
@@ -720,14 +722,14 @@ fn test_performance_critical_method_coverage() {
         TokenType::Identifier("LargeData".to_string()),
         TokenType::LeftBrace,
     ];
-    
+
     for i in 1..=30 {
         if i > 1 {
             tokens.push(TokenType::Comma);
         }
         tokens.push(TokenType::Identifier(format!("field{}", i)));
         tokens.push(TokenType::Colon);
-        
+
         match i % 4 {
             0 => tokens.push(TokenType::Identifier("String".to_string())),
             1 => tokens.push(TokenType::Identifier("i32".to_string())),
@@ -739,13 +741,13 @@ fn test_performance_critical_method_coverage() {
             }
         }
     }
-    
+
     tokens.push(TokenType::RightBrace);
     tokens.push(TokenType::Eof);
-    
+
     let token_stream = VecTokenStream::from_token_types(tokens);
     let mut parser = StatementParser::new(&arena, token_stream);
-    
+
     match parser.parse_statement() {
         Ok(_) => println!("✅ Large data structure stress test passed"),
         Err(_) => println!("✅ Large data structure stress error path tested"),
@@ -759,7 +761,7 @@ fn test_performance_critical_method_coverage() {
         TokenType::Identifier("callback".to_string()),
         TokenType::Colon,
     ];
-    
+
     // Build: fn(fn(fn(fn(i32) -> i32) -> i32) -> i32) -> i32
     for depth in 0..5 {
         tokens.push(TokenType::Fn);
@@ -768,13 +770,13 @@ fn test_performance_critical_method_coverage() {
             tokens.push(TokenType::Identifier("i32".to_string()));
         }
     }
-    
+
     for _ in 0..5 {
         tokens.push(TokenType::RightParen);
         tokens.push(TokenType::Arrow);
         tokens.push(TokenType::Identifier("i32".to_string()));
     }
-    
+
     tokens.extend(vec![
         TokenType::RightParen,
         TokenType::LeftBrace,
@@ -784,10 +786,10 @@ fn test_performance_critical_method_coverage() {
         TokenType::RightBrace,
         TokenType::Eof,
     ]);
-    
+
     let token_stream = VecTokenStream::from_token_types(tokens);
     let mut parser = StatementParser::new(&arena, token_stream);
-    
+
     match parser.parse_statement() {
         Ok(_) => println!("✅ Deep function type nesting stress test passed"),
         Err(_) => println!("✅ Deep function type nesting stress error path tested"),

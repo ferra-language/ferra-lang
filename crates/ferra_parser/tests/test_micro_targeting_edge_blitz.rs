@@ -18,7 +18,6 @@
 
 use ferra_parser::{
     ast::Arena,
-    block::parser::BlockParser,
     pratt::parser::PrattParser,
     program::ProgramParser,
     statement::parser::StatementParser,
