@@ -457,7 +457,7 @@ fn test_advanced_error_recovery_micro_targeting() {
         Ok(_) => println!("✅ Multi-error recovery succeeded"),
         Err(errors) => {
             println!("✅ Multi-error recovery tested: {} errors", errors.len());
-            assert!(errors.len() >= 1, "Should recover from errors");
+            assert!(!errors.is_empty(), "Should recover from errors");
         }
     }
 
